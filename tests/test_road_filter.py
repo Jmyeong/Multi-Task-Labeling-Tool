@@ -94,7 +94,7 @@ class ExistingRoadTests(unittest.TestCase):
         self.record["detections"][0]["class_name"] = "Golfcart"
         self.record["road_fraction"] = float((self.mask == 1).mean())
         (self.root / self.paths["annotation_file"]).write_text(
-            json.dumps(self.record), encoding="utf-8"
+            json.dumps(self.record), encoding="utf-8", newline="\n"
         )
         (self.root / "run.json").write_text(
             json.dumps(
@@ -105,6 +105,7 @@ class ExistingRoadTests(unittest.TestCase):
                 }
             ),
             encoding="utf-8",
+            newline="\n",
         )
         for name, data in index_contents([self.record])[0].items():
             (self.root / name).write_bytes(data)
@@ -159,12 +160,14 @@ class ExistingRoadTests(unittest.TestCase):
             {"review_status": "rejected"},
             {"review_status": "pending", "review": {"note": "manual"}},
         ):
-            annotation.write_text(json.dumps({**self.record, **metadata}), encoding="utf-8")
+            annotation.write_text(
+                json.dumps({**self.record, **metadata}), encoding="utf-8", newline="\n"
+            )
             before = self.snapshot()
             report = filter_existing_roads(self.store, apply=True)
             self.assertEqual(report["counts"]["reviewed_preserved"], 1)
             self.assertEqual(self.snapshot(), before)
-        annotation.write_text(json.dumps(self.record), encoding="utf-8")
+        annotation.write_text(json.dumps(self.record), encoding="utf-8", newline="\n")
         edited = self.mask.copy()
         edited[0, 0] = 1
         (self.root / self.paths["road_file"]).write_bytes(png_bytes(edited))
@@ -182,7 +185,7 @@ class ExistingRoadTests(unittest.TestCase):
             filter_existing_roads(self.store, apply=True)["counts"]["changed_masks_preserved"], 1
         )
         (self.root / self.paths["annotation_file"]).write_text(
-            json.dumps(self.record), encoding="utf-8"
+            json.dumps(self.record), encoding="utf-8", newline="\n"
         )
         (self.root / "run.json").unlink()
         self.assertEqual(

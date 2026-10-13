@@ -165,6 +165,7 @@ for line in sys.stdin.buffer:
     count+=1
 """,
             encoding="utf-8",
+            newline="\n",
         )
         self.weight = self.root / "fake.pt"
         self.weight.write_bytes(b"fixture")

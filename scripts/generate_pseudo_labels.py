@@ -126,7 +126,9 @@ def sha256(path):
 def atomic_json(path, value):
     path.parent.mkdir(parents=True, exist_ok=True)
     temporary = path.with_suffix(path.suffix + ".tmp")
-    temporary.write_text(json.dumps(value, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
+    temporary.write_text(
+        json.dumps(value, indent=2, ensure_ascii=False) + "\n", encoding="utf-8", newline="\n"
+    )
     temporary.replace(path)
 
 
@@ -241,7 +243,7 @@ def write_sample(args, root, row, boxes, probability, signature):
     )
     lines = [yolo_line(box, w, h) for box in boxes]
     (root / paths["detection_file"]).write_text(
-        "\n".join(lines) + ("\n" if lines else ""), encoding="utf-8"
+        "\n".join(lines) + ("\n" if lines else ""), encoding="utf-8", newline="\n"
     )
     if args.previews:
         image = np.asarray(

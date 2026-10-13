@@ -81,7 +81,7 @@ class ExistingLabelTests(unittest.TestCase):
         }
         self.fixture.record = self.record
         (self.root / self.fixture.paths["annotation_file"]).write_text(
-            json.dumps(self.record), encoding="utf-8"
+            json.dumps(self.record), encoding="utf-8", newline="\n"
         )
         (self.root / self.fixture.paths["detection_file"]).write_bytes(
             label_bytes(self.boxes, 48, 32)
@@ -140,15 +140,15 @@ class ExistingLabelTests(unittest.TestCase):
             "review_status": "approved",
             "review": {"note": "수동 검수", "save_count": 2},
         }
-        path.write_text(json.dumps(reviewed), encoding="utf-8")
+        path.write_text(json.dumps(reviewed), encoding="utf-8", newline="\n")
         self.store.refresh()
         before = self.store.current(self.store.frame(self.fixture.frame_id))[0]
         result = filter_existing(self.store, apply=True)
         self.assertEqual(result["counts"]["reviewed_preserved"], 1)
         self.assertEqual(before, self.store.current(self.store.frame(self.fixture.frame_id))[0])
-        path.write_text(json.dumps(self.record), encoding="utf-8")
+        path.write_text(json.dumps(self.record), encoding="utf-8", newline="\n")
         label = self.root / self.fixture.paths["detection_file"]
-        label.write_text("1 0.5 0.5 0.2 0.2\n", encoding="utf-8")
+        label.write_text("1 0.5 0.5 0.2 0.2\n", encoding="utf-8", newline="\n")
         self.store.refresh()
         before = self.snapshot()
         result = filter_existing(self.store, apply=True)

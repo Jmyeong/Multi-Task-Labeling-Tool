@@ -53,7 +53,7 @@ class ReviewTests(unittest.TestCase):
         for path in self.paths.values():
             (self.pseudo / path).parent.mkdir(parents=True, exist_ok=True)
         (self.pseudo / self.paths["detection_file"]).write_text(
-            "0 0.5 0.5 0.5 0.5\n", encoding="utf-8"
+            "0 0.5 0.5 0.5 0.5\n", encoding="utf-8", newline="\n"
         )
         Image.fromarray(np.zeros((32, 48), np.uint8)).save(self.pseudo / self.paths["road_file"])
         self.record = {
@@ -69,7 +69,7 @@ class ReviewTests(unittest.TestCase):
             "generation_signature": "teacher-fixture",
         }
         (self.pseudo / self.paths["annotation_file"]).write_text(
-            json.dumps(self.record), encoding="utf-8"
+            json.dumps(self.record), encoding="utf-8", newline="\n"
         )
         self.store = ReviewStore(self.root, self.pseudo)
         self.frame_id = next(iter(self.store.frames))
@@ -99,7 +99,7 @@ class ReviewTests(unittest.TestCase):
         for key in ("detection_file", "road_file"):
             (self.pseudo / paths[key]).write_bytes((self.pseudo / self.paths[key]).read_bytes())
         (self.pseudo / paths["annotation_file"]).write_text(
-            json.dumps({**self.record, **row, **paths}), encoding="utf-8"
+            json.dumps({**self.record, **row, **paths}), encoding="utf-8", newline="\n"
         )
         self.store.refresh()
         return next(key for key in self.store.frames if key != self.frame_id)
@@ -251,7 +251,7 @@ class ReviewTests(unittest.TestCase):
                 if key in ("road_file", "detection_file", "annotation_file")
             }
         }
-        self.store.journal.write_text(json.dumps(transaction), encoding="utf-8")
+        self.store.journal.write_text(json.dumps(transaction), encoding="utf-8", newline="\n")
         recovered = ReviewStore(self.root, self.pseudo)
         self.assertEqual(recovered.load(self.frame_id)["revision"], before)
 

@@ -70,7 +70,9 @@ class ExportTests(unittest.TestCase):
                     depth_m=np.full((16, 24), i + 1, np.float32),
                     source=np.full((16, 24), 2, np.uint8),
                 )
-            (self.root / row["camera_info_file"]).write_text(f"camera: {seq}\n", encoding="utf-8")
+            (self.root / row["camera_info_file"]).write_text(
+                f"camera: {seq}\n", encoding="utf-8", newline="\n"
+            )
             completed = self.root / row["completed_depth_file"]
             completed.with_suffix(".json").write_text(
                 json.dumps(
@@ -82,6 +84,7 @@ class ExportTests(unittest.TestCase):
                     }
                 ),
                 encoding="utf-8",
+                newline="\n",
             )
             row["image_sha256"] = hashlib.sha256(
                 (self.root / row["image_file"]).read_bytes()
@@ -90,7 +93,7 @@ class ExportTests(unittest.TestCase):
             for path in paths.values():
                 (self.pseudo / path).parent.mkdir(parents=True, exist_ok=True)
             (self.pseudo / paths["detection_file"]).write_text(
-                f"{i % 4} 0.5 0.5 0.5 0.5\n", encoding="utf-8"
+                f"{i % 4} 0.5 0.5 0.5 0.5\n", encoding="utf-8", newline="\n"
             )
             mask = np.zeros((16, 24), np.uint8)
             mask[2:8] = 1
@@ -111,7 +114,7 @@ class ExportTests(unittest.TestCase):
                 "review": {"note": seq, "save_count": 3},
             }
             (self.pseudo / paths["annotation_file"]).write_text(
-                json.dumps(record), encoding="utf-8"
+                json.dumps(record), encoding="utf-8", newline="\n"
             )
             self.rows.append(row)
         self.write_manifest()
@@ -198,7 +201,7 @@ class ExportTests(unittest.TestCase):
 
     def test_paths_existing_dest_and_concurrent_job_are_protected(self):
         (self.base / "taken").mkdir()
-        (self.base / "taken" / "keep").write_text("keep", encoding="utf-8")
+        (self.base / "taken" / "keep").write_text("keep", encoding="utf-8", newline="\n")
         for payload in (
             {"parent": str(self.base), "name": "taken"},
             {"parent": "relative", "name": "new"},
@@ -247,7 +250,7 @@ class ExportTests(unittest.TestCase):
             row = self.rows[0]
             path = self.pseudo / annotation_paths(row)["detection_file"]
             old = path.read_bytes()
-            path.write_text("", encoding="utf-8")
+            path.write_text("", encoding="utf-8", newline="\n")
             result = plan(snapshots)
             self.saved_before = old
             return result
@@ -267,7 +270,7 @@ class ExportTests(unittest.TestCase):
         path = self.pseudo / annotation_paths(self.rows[0])["annotation_file"]
         record = json.loads(path.read_text(encoding="utf-8"))
         record["image_sha256"] = "bad"
-        path.write_text(json.dumps(record), encoding="utf-8")
+        path.write_text(json.dumps(record), encoding="utf-8", newline="\n")
         self.write_manifest()
         job = self.run_export()
         self.assertEqual(job["status"], "error")
