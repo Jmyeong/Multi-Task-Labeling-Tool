@@ -10,7 +10,7 @@ class ReviewError(Exception):
 
 
 def inside(root, relative):
-    path = (root / relative).resolve()
+    path = (root / str(relative).replace("\\", "/")).resolve()
     if not relative or not path.is_relative_to(root):
         raise ReviewError("허용되지 않은 파일 경로입니다.")
     return path

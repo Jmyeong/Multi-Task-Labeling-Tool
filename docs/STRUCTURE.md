@@ -1,6 +1,6 @@
 # Code structure
 
-The GUI has no PyTorch/Ultralytics import dependency. SAM is isolated in a lazy subprocess; pseudo labeling is a separate command.
+The GUI has no PyTorch/Ultralytics import dependency. `run.py` handles shared Windows/Linux launch defaults; `.sh` and `.bat` wrappers delegate to it. SAM is isolated in a lazy subprocess; pseudo labeling is a separate command.
 
 ```mermaid
 flowchart LR
@@ -29,11 +29,13 @@ flowchart LR
 | `core/workspace.py` | Discover inputs, validate identities, create separate manifests and initial annotations |
 | `core/store.py` | Label loading, validation, revisions, transactional save/rollback, review history |
 | `core/label_schema.py` | Workspace class names, stable IDs, colors, reversible removal, setting revisions and backups |
+| `core/file_lock.py` | Common nonblocking process locks: Windows CRT and POSIX flock |
 | `core/io.py` | Path containment checks and atomic file writes |
 | `core/dataset.py` | Manifest schema, annotation paths, existing training-data adapter |
 | `core/annotations.py` | Existing class mapping, legacy instance-mask conversion and YOLO serialization |
 | `core/index.py` | Rebuild label/review index files |
 | `core/box_filter.py`, `core/road_filter.py` | Pure postprocessing rules |
+| `sam/pipe_reader.py` | Threaded raw-pipe JSON-line reader with size limits and deadlines on Windows/Linux |
 | `sam/service.py`, `sam/worker.py` | JSON-line worker protocol, prompt validation, lazy image cache and SAM inference |
 | `scripts/prepare_dataset.py` | Discover/prepare raw input folders |
 | `scripts/generate_pseudo_labels.py` | Batched inference and resumable pseudo labels |

@@ -62,7 +62,7 @@ class DatasetExports:
         self.jobs = {}
         self.history = store.root / "_export_history"
         for path in sorted(self.history.glob("*.json")):
-            job = json.loads(path.read_text())
+            job = json.loads(path.read_text(encoding="utf-8"))
             if job["status"] in ("queued", "snapshot", "planning", "copying"):
                 job.update(
                     status="error",
@@ -281,7 +281,7 @@ class DatasetExports:
                             self.store.dataset_root,
                             str(companion.relative_to(self.store.dataset_root)),
                         )
-                        metadata = json.loads(companion.read_text())
+                        metadata = json.loads(companion.read_text(encoding="utf-8"))
                         metadata["export_source_paths"] = {
                             k: v for k, v in metadata.items() if k.endswith("_file")
                         }

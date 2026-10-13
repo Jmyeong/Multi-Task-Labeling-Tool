@@ -2,11 +2,11 @@
 
 A local browser editor for detection boxes and binary road segmentation. It preserves the manual editing, SAM prompts, review status, backups, and approved-data export workflow of EasyLabeling_Tool. VLM functionality and training code are excluded.
 
-[한국어 사용 안내](docs/GUI_GUIDE.md) · [Code structure](docs/STRUCTURE.md)
+[한국어 사용 안내](docs/GUI_GUIDE.md) · [Code structure](docs/STRUCTURE.md) · [Windows setup](docs/WINDOWS.md)
 
 ## Quick start
 
-Python 3.10+ on Linux or WSL. Manual editing works without PyTorch, SAM or a GPU.
+Python 3.10+ on Windows, Linux or WSL. Manual editing works without PyTorch, SAM or a GPU.
 
 ```bash
 python3 -m venv .venv
@@ -14,6 +14,8 @@ source .venv/bin/activate
 pip install -r requirements.txt
 ./run_gui.sh
 ```
+
+On Windows CMD use `run_gui.bat` after activating the environment; in PowerShell use `.\.venv\Scripts\python.exe run.py gui`. The common entry point on either OS is `python run.py gui`. See [Windows setup](docs/WINDOWS.md) for native Windows installation and SAM.
 
 Open http://localhost:8766. Put images in `dataset/`, or click **입력·출력 폴더** to choose an existing input folder and a separate annotation output. Both paths refer to the machine running the server. For VS Code Remote SSH, forward port 8766 in the Ports tab.
 
@@ -39,6 +41,9 @@ MT-Labeling/
 │   └── checkpoint/         User-supplied pseudo-label weights
 ├── dataset/                User input images (or select an external folder)
 ├── outputs/                Editable labels, manifests, backups and exports
+├── run.py                  Shared Windows/Linux GUI and pseudo-label launcher
+├── run_gui.sh / .bat        OS-specific wrappers for the same launcher
+├── run_pseudo.sh / .bat     OS-specific wrappers for the same launcher
 ├── tests/                  Temporary-fixture regression tests
 └── docs/                   GUI and architecture guides
 ```
@@ -82,7 +87,7 @@ Existing RGB/NIR fusion models require matched NIR images. Automatic generation 
 
 ## Utilities
 
-Run from the repository root; these commands do not start training.
+Run from the repository root; these Python module commands are the same on Windows and Linux and do not start training.
 
 ```bash
 python -m scripts.prepare_dataset --dataset-root /path/to/images --output-root /path/to/labels
@@ -102,6 +107,6 @@ The GUI **데이터 추출** button provides the same export. Only approved fram
 python -m unittest discover -s tests -v
 ```
 
-Tests use temporary datasets only. Two generator tests require optional pseudo-label dependencies and skip in a GUI-only environment. Datasets, outputs, environments, checkpoints and caches are excluded by `.gitignore`. The original EasyLabeling_Tool is independent of this copy.
+CI tests Windows and Ubuntu on Python 3.10–3.12, including native file locks, subprocess-pipe deadlines, UTF-8 paths and the Windows batch wrapper. Tests use temporary datasets only. Two generator tests require optional pseudo-label dependencies and skip in a GUI-only environment. Datasets, outputs, environments, checkpoints and caches are excluded by `.gitignore`. The original EasyLabeling_Tool is independent of this copy.
 
 Third-party packages retain their upstream licenses. SAM 2: [official repository](https://github.com/facebookresearch/sam2). Ultralytics: [official licensing information](https://www.ultralytics.com/license). No new license is assigned to the copied project code in this restructuring.

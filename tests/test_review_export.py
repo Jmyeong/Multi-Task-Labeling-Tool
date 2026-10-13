@@ -70,7 +70,7 @@ class ExportTests(unittest.TestCase):
                     depth_m=np.full((16, 24), i + 1, np.float32),
                     source=np.full((16, 24), 2, np.uint8),
                 )
-            (self.root / row["camera_info_file"]).write_text(f"camera: {seq}\n")
+            (self.root / row["camera_info_file"]).write_text(f"camera: {seq}\n", encoding="utf-8")
             completed = self.root / row["completed_depth_file"]
             completed.with_suffix(".json").write_text(
                 json.dumps(
@@ -80,7 +80,8 @@ class ExportTests(unittest.TestCase):
                         "output_file": row["completed_depth_file"].removeprefix("260916/"),
                         "source_note": "estimated",
                     }
-                )
+                ),
+                encoding="utf-8",
             )
             row["image_sha256"] = hashlib.sha256(
                 (self.root / row["image_file"]).read_bytes()
@@ -88,7 +89,9 @@ class ExportTests(unittest.TestCase):
             paths = annotation_paths(row)
             for path in paths.values():
                 (self.pseudo / path).parent.mkdir(parents=True, exist_ok=True)
-            (self.pseudo / paths["detection_file"]).write_text(f"{i % 4} 0.5 0.5 0.5 0.5\n")
+            (self.pseudo / paths["detection_file"]).write_text(
+                f"{i % 4} 0.5 0.5 0.5 0.5\n", encoding="utf-8"
+            )
             mask = np.zeros((16, 24), np.uint8)
             mask[2:8] = 1
             mask[8:10] = 255
@@ -107,7 +110,9 @@ class ExportTests(unittest.TestCase):
                 "detection_count": 1,
                 "review": {"note": seq, "save_count": 3},
             }
-            (self.pseudo / paths["annotation_file"]).write_text(json.dumps(record))
+            (self.pseudo / paths["annotation_file"]).write_text(
+                json.dumps(record), encoding="utf-8"
+            )
             self.rows.append(row)
         self.write_manifest()
         self.store = ReviewStore(self.root, self.pseudo)
@@ -164,10 +169,12 @@ class ExportTests(unittest.TestCase):
                 self.assertEqual(
                     (out / row[field]).read_bytes(), (self.pseudo / paths[field]).read_bytes()
                 )
-            record = json.loads((out / row["annotation_file"]).read_text())
+            record = json.loads((out / row["annotation_file"]).read_text(encoding="utf-8"))
             self.assertEqual(record["review_status"], "approved")
             self.assertEqual(record["review"]["save_count"], 3)
-            meta = json.loads((out / row["completed_depth_file"]).with_suffix(".json").read_text())
+            meta = json.loads(
+                (out / row["completed_depth_file"]).with_suffix(".json").read_text(encoding="utf-8")
+            )
             self.assertEqual(meta["image_file"], row["image_file"])
             self.assertEqual(meta["source_depth_file"], row["filtered_depth_file"])
             with np.load(out / row["completed_depth_file"]) as data:
@@ -182,7 +189,7 @@ class ExportTests(unittest.TestCase):
         reopened = ReviewStore(out, out)
         self.assertEqual(len(reopened.frames), 4)
         self.assertEqual(reopened.load(next(iter(reopened.frames)))["status"], "approved")
-        summary = json.loads((out / "export_summary.json").read_text())
+        summary = json.loads((out / "export_summary.json").read_text(encoding="utf-8"))
         for rel, digest in summary["files_sha256"].items():
             self.assertEqual(hashlib.sha256((out / rel).read_bytes()).hexdigest(), digest)
         self.assertFalse((out / ".export_incomplete.json").exists())
@@ -191,7 +198,7 @@ class ExportTests(unittest.TestCase):
 
     def test_paths_existing_dest_and_concurrent_job_are_protected(self):
         (self.base / "taken").mkdir()
-        (self.base / "taken" / "keep").write_text("keep")
+        (self.base / "taken" / "keep").write_text("keep", encoding="utf-8")
         for payload in (
             {"parent": str(self.base), "name": "taken"},
             {"parent": "relative", "name": "new"},
@@ -201,7 +208,7 @@ class ExportTests(unittest.TestCase):
         ):
             with self.assertRaises(ExportError):
                 self.exports.start(payload)
-        self.assertEqual((self.base / "taken" / "keep").read_text(), "keep")
+        self.assertEqual((self.base / "taken" / "keep").read_text(encoding="utf-8"), "keep")
         entered = threading.Event()
         release = threading.Event()
         snapshot = self.exports.snapshot
@@ -240,7 +247,7 @@ class ExportTests(unittest.TestCase):
             row = self.rows[0]
             path = self.pseudo / annotation_paths(row)["detection_file"]
             old = path.read_bytes()
-            path.write_text("")
+            path.write_text("", encoding="utf-8")
             result = plan(snapshots)
             self.saved_before = old
             return result
@@ -258,9 +265,9 @@ class ExportTests(unittest.TestCase):
     def test_bad_image_hash_cleans_partial_copy(self):
         self.rows[0]["image_sha256"] = "bad"
         path = self.pseudo / annotation_paths(self.rows[0])["annotation_file"]
-        record = json.loads(path.read_text())
+        record = json.loads(path.read_text(encoding="utf-8"))
         record["image_sha256"] = "bad"
-        path.write_text(json.dumps(record))
+        path.write_text(json.dumps(record), encoding="utf-8")
         self.write_manifest()
         job = self.run_export()
         self.assertEqual(job["status"], "error")

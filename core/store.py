@@ -4,7 +4,6 @@ import base64
 import binascii
 import csv
 from datetime import datetime, timezone
-import fcntl
 import hashlib
 import io
 import json
@@ -18,6 +17,7 @@ from core.dataset import annotation_paths, read_manifest
 from core.annotations import yolo_line
 from core.label_schema import load_schema, schema_revision, update_schema
 from core.io import ReviewError, inside, atomic_bytes, json_bytes
+from core.file_lock import exclusive_lock
 
 STATUSES = {"pending", "approved", "rejected"}
 
@@ -43,24 +43,24 @@ class ReviewStore:
 
         @contextmanager
         def acquire():
-            with (self.root / ".generation.lock").open("a") as handle:
+            # Normalize busy locks to the editor's existing 409 API contract.
+            from contextlib import ExitStack
+
+            with ExitStack() as stack:
                 try:
-                    fcntl.flock(handle, fcntl.LOCK_EX | fcntl.LOCK_NB)
+                    stack.enter_context(exclusive_lock(self.root / ".generation.lock"))
                 except BlockingIOError as error:
                     raise ReviewError(
                         "라벨 생성 또는 다른 저장이 진행 중입니다. 완료 후 다시 시도하세요.", 409
                     ) from error
-                try:
-                    yield
-                finally:
-                    fcntl.flock(handle, fcntl.LOCK_UN)
+                yield
 
         return acquire()
 
     def recover(self):
         if not self.journal.exists():
             return
-        transaction = json.loads(self.journal.read_text())
+        transaction = json.loads(self.journal.read_text(encoding="utf-8"))
         for target, backup in transaction["files"].items():
             atomic_bytes(inside(self.root, target), inside(self.root, backup).read_bytes())
         self.journal.unlink()

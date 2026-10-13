@@ -22,6 +22,7 @@ from torch.utils.data import DataLoader, Dataset
 from core.dataset import annotation_paths, resolve_file
 from core.workspace import prepare_workspace
 from core.label_schema import require_teacher_schema
+from core.file_lock import exclusive_lock
 from core.box_filter import filter_duplicate_boxes
 from core.road_filter import keep_largest_road_blobs
 from core.index import rebuild_index
@@ -356,10 +357,7 @@ def main():
     signature = hashlib.sha256(json.dumps(config, sort_keys=True).encode()).hexdigest()
     root.mkdir(parents=True, exist_ok=True)
     # Prevent two writers from sharing a directory; released even on exceptions.
-    import fcntl
-
-    with (root / ".generation.lock").open("w") as lock:
-        fcntl.flock(lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
+    with exclusive_lock(root / ".generation.lock"):
         run_path = root / "run.json"
         if run_path.exists():
             previous = json.loads(run_path.read_text(encoding="utf-8"))

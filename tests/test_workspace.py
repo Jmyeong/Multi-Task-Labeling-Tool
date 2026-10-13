@@ -1,7 +1,7 @@
 """Portable raw-image inputs, separate outputs and workspace switching."""
 
 import base64
-import fcntl
+from core.file_lock import exclusive_lock
 import json
 from http.server import ThreadingHTTPServer
 from pathlib import Path
@@ -120,15 +120,19 @@ class WorkspaceTests(unittest.TestCase):
         (self.source / "frame.jpg").unlink()
         outside = self.base / "outside.png"
         outside.write_bytes(self.original)
-        (self.source / "linked.png").symlink_to(outside)
+        try:
+            (self.source / "linked.png").symlink_to(outside)
+        except OSError as error:
+            if getattr(error, "winerror", None) != 1314:
+                raise  # Windows symlinks require Developer Mode/admin rights.
+            return
         with self.assertRaises(ReviewError):
             input_rows(self.source)
 
     def test_initialization_respects_generation_lock(self):
         prepare_workspace(self.source, self.output)
         before = (self.output / "workspace_manifest.csv").read_bytes()
-        with (self.output / ".generation.lock").open("a") as lock:
-            fcntl.flock(lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
+        with exclusive_lock(self.output / ".generation.lock"):
             with self.assertRaises(ReviewError):
                 prepare_workspace(self.source, self.output)
         self.assertEqual((self.output / "workspace_manifest.csv").read_bytes(), before)

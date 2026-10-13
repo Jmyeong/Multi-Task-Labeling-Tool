@@ -4,11 +4,10 @@ import json
 import math
 import os
 from pathlib import Path
-import select
 import subprocess
 import sys
 import threading
-import time
+from sam.pipe_reader import LineReader
 
 DEFAULT_PYTHON = os.environ.get("SAM_PYTHON", sys.executable)
 DEFAULT_CHECKPOINT = os.environ.get(
@@ -69,6 +68,7 @@ class SamService:
         )
         self.timeout, self.idle_seconds = timeout, idle_seconds
         self.process = None
+        self.reader = None
         self.lock = threading.Lock()
 
     def info(self):
@@ -91,6 +91,9 @@ class SamService:
                 except subprocess.TimeoutExpired:
                     process.kill()
                     process.wait()
+            if self.reader is not None:
+                self.reader.close()
+                self.reader = None
             for stream in (process.stdin, process.stdout):
                 stream.close()
 
@@ -125,6 +128,7 @@ class SamService:
                     env=env,
                     bufsize=0,
                 )
+                self.reader = LineReader(self.process.stdout)
             message = {
                 "image_path": str(image_path),
                 "width": width,
@@ -133,20 +137,14 @@ class SamService:
             }
             self.process.stdin.write((json.dumps(message) + "\n").encode())
             self.process.stdin.flush()
-            deadline = time.monotonic() + self.timeout
-            data = bytearray()
-            while not data.endswith(b"\n"):
-                remaining = deadline - time.monotonic()
-                if remaining <= 0 or not select.select([self.process.stdout], [], [], remaining)[0]:
-                    raise TimeoutError("SAM 응답 시간이 초과되었습니다. 다시 실행하세요.")
-                chunk = os.read(self.process.stdout.fileno(), 65536)
-                if not chunk:
-                    raise RuntimeError(
-                        "SAM 실행이 종료되었습니다. 서버 로그를 확인한 뒤 다시 실행하세요."
-                    )
-                data.extend(chunk)
-                if len(data) > 32 * 1024 * 1024:
-                    raise RuntimeError("SAM 응답 크기가 올바르지 않습니다.")
+            try:
+                data = self.reader.read(self.timeout)
+            except TimeoutError as error:
+                raise TimeoutError("SAM 응답 시간이 초과되었습니다. 다시 실행하세요.") from error
+            if data is None:
+                raise RuntimeError(
+                    "SAM 실행이 종료되었습니다. 서버 로그를 확인한 뒤 다시 실행하세요."
+                )
             result = json.loads(data)
             if "error" in result:
                 raise RuntimeError(result["error"])

@@ -93,7 +93,9 @@ class ExistingRoadTests(unittest.TestCase):
         self.record = self.fixture.record
         self.record["detections"][0]["class_name"] = "Golfcart"
         self.record["road_fraction"] = float((self.mask == 1).mean())
-        (self.root / self.paths["annotation_file"]).write_text(json.dumps(self.record))
+        (self.root / self.paths["annotation_file"]).write_text(
+            json.dumps(self.record), encoding="utf-8"
+        )
         (self.root / "run.json").write_text(
             json.dumps(
                 {
@@ -101,7 +103,8 @@ class ExistingRoadTests(unittest.TestCase):
                     "road_threshold": 0.5,
                     "road_ignore_margin": 0.1,
                 }
-            )
+            ),
+            encoding="utf-8",
         )
         for name, data in index_contents([self.record])[0].items():
             (self.root / name).write_bytes(data)
@@ -127,7 +130,7 @@ class ExistingRoadTests(unittest.TestCase):
         report = filter_existing_roads(self.store, apply=True)
         self.assertTrue(report["applied"])
         self.assertTrue(report["protected_files_unchanged"])
-        record = json.loads((self.root / self.paths["annotation_file"]).read_text())
+        record = json.loads((self.root / self.paths["annotation_file"]).read_text(encoding="utf-8"))
         self.assertEqual(record["review_status"], "pending")
         self.assertNotIn("review", record)
         self.assertEqual(record["road_fraction"], 58 / self.mask.size)
@@ -156,12 +159,12 @@ class ExistingRoadTests(unittest.TestCase):
             {"review_status": "rejected"},
             {"review_status": "pending", "review": {"note": "manual"}},
         ):
-            annotation.write_text(json.dumps({**self.record, **metadata}))
+            annotation.write_text(json.dumps({**self.record, **metadata}), encoding="utf-8")
             before = self.snapshot()
             report = filter_existing_roads(self.store, apply=True)
             self.assertEqual(report["counts"]["reviewed_preserved"], 1)
             self.assertEqual(self.snapshot(), before)
-        annotation.write_text(json.dumps(self.record))
+        annotation.write_text(json.dumps(self.record), encoding="utf-8")
         edited = self.mask.copy()
         edited[0, 0] = 1
         (self.root / self.paths["road_file"]).write_bytes(png_bytes(edited))
@@ -178,7 +181,9 @@ class ExistingRoadTests(unittest.TestCase):
         self.assertEqual(
             filter_existing_roads(self.store, apply=True)["counts"]["changed_masks_preserved"], 1
         )
-        (self.root / self.paths["annotation_file"]).write_text(json.dumps(self.record))
+        (self.root / self.paths["annotation_file"]).write_text(
+            json.dumps(self.record), encoding="utf-8"
+        )
         (self.root / "run.json").unlink()
         self.assertEqual(
             filter_existing_roads(self.store, apply=True)["counts"]["unverifiable_masks_preserved"],

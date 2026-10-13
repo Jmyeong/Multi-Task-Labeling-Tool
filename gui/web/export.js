@@ -44,7 +44,7 @@ async function pollExport() {
 }
 $("exportDataset").onclick = async () => {
   if (!S.config) return;
-  if (!$("exportParent").value) $("exportParent").value=S.config.root.replace(/\/[^/]+$/, "") + "/exports";
+  if (!$("exportParent").value) $("exportParent").value=S.config.export_parent;
   if (!$("exportName").value) {
     const now=new Date(),part=n=>String(n).padStart(2,"0");
     $("exportName").value=`reviewed_${now.getFullYear()}${part(now.getMonth()+1)}${part(now.getDate())}_${part(now.getHours())}${part(now.getMinutes())}${part(now.getSeconds())}`;

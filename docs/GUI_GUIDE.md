@@ -8,6 +8,8 @@ pip install -r requirements.txt
 ./run_gui.sh
 ```
 
+Windows CMD에서는 가상환경을 만든 뒤 `.venv\Scripts\activate.bat`, `python -m pip install -r requirements.txt`, `run_gui.bat` 순서로 실행합니다. PowerShell에서는 활성화 없이 `.\.venv\Scripts\python.exe run.py gui`로 실행할 수 있습니다. 자세한 설정은 [Windows 안내](WINDOWS.md)를 참고하세요.
+
 기본 주소는 `http://localhost:8766`입니다. 서버에서 실행하면 VS Code **포트** 탭에서 8766을 전달한 뒤 로컬 브라우저로 접속하세요.
 
 ## 입력과 저장 위치

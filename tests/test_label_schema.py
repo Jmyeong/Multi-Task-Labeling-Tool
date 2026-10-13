@@ -7,7 +7,7 @@ from pathlib import Path
 import tempfile
 import unittest
 from unittest.mock import patch
-import fcntl
+from core.file_lock import exclusive_lock
 
 import numpy as np
 from PIL import Image
@@ -82,9 +82,14 @@ class LabelSchemaTests(unittest.TestCase):
         self.assertEqual(job["status"], "completed", job["error"])
         target = Path(job["output"])
         self.assertEqual(load_schema(target), schema)
-        self.assertEqual((target / "classes.txt").read_text().splitlines()[4], "Vehicle")
         self.assertEqual(
-            json.loads((target / "export_summary.json").read_text())["mask_values"]["2"], "Water"
+            (target / "classes.txt").read_text(encoding="utf-8").splitlines()[4], "Vehicle"
+        )
+        self.assertEqual(
+            json.loads((target / "export_summary.json").read_text(encoding="utf-8"))["mask_values"][
+                "2"
+            ],
+            "Water",
         )
         imported = Workspace(target, self.base / "imported")
         self.assertEqual(load_schema(imported.store.root), schema)
@@ -157,8 +162,7 @@ class LabelSchemaTests(unittest.TestCase):
         with self.assertRaises(ReviewError):
             self.store.save_schema(old)
         self.assertNotEqual(self.store.load(self.fid)["revision"], frame_revision)
-        with (self.output / ".generation.lock").open("a") as lock:
-            fcntl.flock(lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
+        with exclusive_lock(self.output / ".generation.lock"):
             with self.assertRaises(ReviewError):
                 self.store.save_schema(self.settings())
         before = (self.output / "label_schema.json").read_bytes()

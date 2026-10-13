@@ -2,7 +2,7 @@
 
 import base64
 import csv
-import fcntl
+from core.file_lock import exclusive_lock
 import json
 from pathlib import Path
 import tempfile
@@ -52,7 +52,9 @@ class ReviewTests(unittest.TestCase):
         self.paths = annotation_paths(row)
         for path in self.paths.values():
             (self.pseudo / path).parent.mkdir(parents=True, exist_ok=True)
-        (self.pseudo / self.paths["detection_file"]).write_text("0 0.5 0.5 0.5 0.5\n")
+        (self.pseudo / self.paths["detection_file"]).write_text(
+            "0 0.5 0.5 0.5 0.5\n", encoding="utf-8"
+        )
         Image.fromarray(np.zeros((32, 48), np.uint8)).save(self.pseudo / self.paths["road_file"])
         self.record = {
             **row,
@@ -66,7 +68,9 @@ class ReviewTests(unittest.TestCase):
             "uncertain_fraction": 0,
             "generation_signature": "teacher-fixture",
         }
-        (self.pseudo / self.paths["annotation_file"]).write_text(json.dumps(self.record))
+        (self.pseudo / self.paths["annotation_file"]).write_text(
+            json.dumps(self.record), encoding="utf-8"
+        )
         self.store = ReviewStore(self.root, self.pseudo)
         self.frame_id = next(iter(self.store.frames))
 
@@ -95,7 +99,7 @@ class ReviewTests(unittest.TestCase):
         for key in ("detection_file", "road_file"):
             (self.pseudo / paths[key]).write_bytes((self.pseudo / self.paths[key]).read_bytes())
         (self.pseudo / paths["annotation_file"]).write_text(
-            json.dumps({**self.record, **row, **paths})
+            json.dumps({**self.record, **row, **paths}), encoding="utf-8"
         )
         self.store.refresh()
         return next(key for key in self.store.frames if key != self.frame_id)
@@ -184,7 +188,7 @@ class ReviewTests(unittest.TestCase):
             self.root, read_manifest(self.root), "train", str(self.pseudo), "reviewed", "completed"
         )
         self.assertEqual(rows[0]["label_source"], "reviewed")
-        self.assertEqual(Path(rows[0]["label"]).read_text().split()[0], "2")
+        self.assertEqual(Path(rows[0]["label"]).read_text(encoding="utf-8").split()[0], "2")
         self.assertEqual(set(np.unique(np.array(Image.open(rows[0]["road_mask"])))), {0, 1, 255})
 
     def test_invalid_payload_and_stale_revision_do_not_write(self):
@@ -212,7 +216,9 @@ class ReviewTests(unittest.TestCase):
         payload = self.payload()
         payload.update(boxes=[], status="rejected")
         self.store.save(self.frame_id, payload)
-        self.assertEqual((self.pseudo / self.paths["detection_file"]).read_text(), "")
+        self.assertEqual(
+            (self.pseudo / self.paths["detection_file"]).read_text(encoding="utf-8"), ""
+        )
         self.assertEqual(self.store.listing()[0]["box_count"], 0)
         self.assertEqual(self.store.load(self.frame_id)["status"], "rejected")
 
@@ -245,13 +251,12 @@ class ReviewTests(unittest.TestCase):
                 if key in ("road_file", "detection_file", "annotation_file")
             }
         }
-        self.store.journal.write_text(json.dumps(transaction))
+        self.store.journal.write_text(json.dumps(transaction), encoding="utf-8")
         recovered = ReviewStore(self.root, self.pseudo)
         self.assertEqual(recovered.load(self.frame_id)["revision"], before)
 
     def test_generation_lock(self):
-        with (self.pseudo / ".generation.lock").open("a") as lock:
-            fcntl.flock(lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
+        with exclusive_lock(self.pseudo / ".generation.lock"):
             with self.assertRaises(ReviewError) as context:
                 self.store.save(self.frame_id, self.payload())
             self.assertEqual(context.exception.status, 409)

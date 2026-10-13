@@ -134,6 +134,7 @@ def make_handler(store=None, sam=None, exports=None, workspace=None):
                             "token": store.token,
                             **public_schema(store.root),
                             "root": str(store.root),
+                            "export_parent": str(store.root.parent / "exports"),
                             "dataset_root": str(store.dataset_root),
                             "sam": sam.info()
                             if sam

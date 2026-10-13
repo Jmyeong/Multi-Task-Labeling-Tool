@@ -1,6 +1,5 @@
 """Read-only image discovery and separate, persistent annotation workspaces."""
 
-import fcntl
 import csv
 import hashlib
 import io
@@ -14,6 +13,7 @@ from PIL import Image
 from core.dataset import annotation_paths, read_manifest
 from core.io import ReviewError, atomic_bytes, inside, json_bytes
 from core.label_schema import FILE_NAME, load_schema
+from core.file_lock import exclusive_lock
 
 EXTENSIONS = {".png", ".jpg", ".jpeg", ".bmp", ".tif", ".tiff", ".webp"}
 FIELDS = [
@@ -157,20 +157,26 @@ def prepare_workspace(dataset_root, output_root, initialize=True, allow_empty=Fa
     if not rows and not allow_empty:
         raise ReviewError("입력 폴더에 RGB 이미지가 없습니다.")
     state = output / "workspace.json"
-    if state.exists() and Path(json.loads(state.read_text())["dataset_root"]).resolve() != source:
+    if (
+        state.exists()
+        and Path(json.loads(state.read_text(encoding="utf-8"))["dataset_root"]).resolve() != source
+    ):
         raise ReviewError(
             "이 출력 폴더는 다른 입력 데이터용입니다. 새 출력 폴더를 지정하세요.", 409
         )
     output.mkdir(parents=True, exist_ok=True)
-    with (output / ".generation.lock").open("a") as lock:
+    from contextlib import ExitStack
+
+    with ExitStack() as stack:
         try:
-            fcntl.flock(lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
-        except BlockingIOError:
-            raise ReviewError("다른 작업이 라벨을 생성하거나 저장 중입니다.", 409)
+            stack.enter_context(exclusive_lock(output / ".generation.lock"))
+        except BlockingIOError as error:
+            raise ReviewError("다른 작업이 라벨을 생성하거나 저장 중입니다.", 409) from error
         # Check again under the writer lock before writing workspace files.
         if (
             state.exists()
-            and Path(json.loads(state.read_text())["dataset_root"]).resolve() != source
+            and Path(json.loads(state.read_text(encoding="utf-8"))["dataset_root"]).resolve()
+            != source
         ):
             raise ReviewError("이 출력 폴더는 다른 입력 데이터용입니다.", 409)
         return _write_workspace(source, output, rows, initialize)

@@ -32,7 +32,7 @@ def filter_existing_roads(store, max_blobs=2, dates=None, apply=False, progress=
     with store.lock, store.generation_lock():
         store.recover()
         run_path = store.root / "run.json"
-        run = json.loads(run_path.read_text()) if run_path.is_file() else {}
+        run = json.loads(run_path.read_text(encoding="utf-8")) if run_path.is_file() else {}
         counts, changes, updates, records, protected = Counter(), [], {}, [], {}
         timestamp = datetime.now(timezone.utc).isoformat()
         for frame in store.frames.values():

@@ -6,10 +6,10 @@ import base64
 from contextlib import nullcontext, redirect_stdout
 import json
 from pathlib import Path
-import select
 import sys
 import time
 import traceback
+from pipe_reader import LineReader
 
 
 def main():
@@ -20,9 +20,15 @@ def main():
     parser.add_argument("--idle-seconds", type=int, default=600)
     args = parser.parse_args()
     predictor, image_key, device = None, None, None
-    while select.select([sys.stdin], [], [], args.idle_seconds)[0]:
-        line = sys.stdin.readline()
-        if not line:
+    reader = LineReader(sys.stdin)
+    while True:
+        try:
+            line = reader.read(args.idle_seconds)
+        except TimeoutError:
+            reader.close()
+            break
+        if line is None:
+            reader.close()
             break
         try:
             request = json.loads(line)
