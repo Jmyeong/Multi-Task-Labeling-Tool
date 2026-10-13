@@ -1,0 +1,5 @@
+-r requirements.txt
+# Install a matching torch/torchvision build for your CPU/CUDA environment first.
+torch>=2.5.1,<3
+torchvision>=0.20.1,<1
+ultralytics>=8.4.0,<9

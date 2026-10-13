@@ -1,0 +1,4 @@
+# Manual GUI, dataset export and rule-based label filters. No GPU required.
+numpy>=1.26,<3
+Pillow>=10,<13
+opencv-python-headless>=4.10,<5
