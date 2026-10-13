@@ -27,9 +27,9 @@ from core.box_filter import filter_duplicate_boxes
 from core.road_filter import keep_largest_road_blobs
 from core.index import rebuild_index
 from core.annotations import CLASS_NAMES, yolo_line
-from pseudo_labeling.model.preprocess import letterbox_all
-from pseudo_labeling.model.yolo26 import select_device
-from pseudo_labeling.model.checkpoint import (
+from pseudo_labeling.model.multi_task.preprocess import letterbox_all
+from pseudo_labeling.model.multi_task.yolo26 import select_device
+from pseudo_labeling.model.multi_task.checkpoint import (
     load_model,
     decode_yolo26_detections,
     validate_test_environment,
@@ -42,13 +42,14 @@ def parse_args():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--dataset-root", type=Path, default=PROJECT / "dataset")
     parser.add_argument("--output-root", type=Path, help="Default: outputs/pseudo_labels")
+    parser.add_argument("--include-labeled", action="store_true", help="Also infer frames with source semantic/instance labels; originals stay unchanged")
     parser.add_argument("--dates", nargs="+", default=None)
     parser.add_argument("--splits", nargs="+", choices=("train", "test"), default=["train", "test"])
     parser.add_argument(
-        "--checkpoint", default=str(PROJECT / "pseudo_labeling/checkpoint/best_joint.pt")
+        "--checkpoint", default=str(PROJECT / "pseudo_labeling/model/multi_task/checkpoint/best_joint.pt")
     )
     parser.add_argument(
-        "--model-template", default=str(PROJECT / "pseudo_labeling/checkpoint/yolo26s.pt")
+        "--model-template", default=str(PROJECT / "pseudo_labeling/model/multi_task/checkpoint/yolo26s.pt")
     )
     parser.add_argument(
         "--input-mode",
@@ -305,7 +306,7 @@ def main():
     for weight in (args.checkpoint, args.model_template):
         if not Path(weight).expanduser().is_file():
             raise FileNotFoundError(
-                f"Place compatible weights in pseudo_labeling/checkpoint or specify a path: {weight}"
+                f"Place compatible weights in pseudo_labeling/model/multi_task/checkpoint or specify a path: {weight}"
             )
     args.checkpoint = str(Path(args.checkpoint).expanduser().resolve())
     args.model_template = str(Path(args.model_template).expanduser().resolve())
@@ -316,8 +317,7 @@ def main():
         for r in all_rows
         if (args.dates is None or r["date"] in args.dates)
         and r["split"] in args.splits
-        and not r["semseg_file"]
-        and not r["instseg_file"]
+        and (args.include_labeled or (not r["semseg_file"] and not r["instseg_file"]))
     ]
     if args.limit:
         rows = rows[: args.limit]

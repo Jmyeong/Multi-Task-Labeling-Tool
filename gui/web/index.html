@@ -7,6 +7,7 @@
   <script src="/export.js" defer></script>
   <script src="/workspace.js" defer></script>
   <script src="/labels.js" defer></script>
+  <script src="/pseudo.js" defer></script>
 </head>
 <body>
   <header>
@@ -15,6 +16,7 @@
     <a class="button quiet" href="/api/export" download>검수 현황 CSV ↓</a>
     <button id="openLabelSettings" class="quiet">클래스·색상 설정</button>
     <button id="openWorkspace" class="quiet">입력·출력 폴더</button>
+    <button id="pseudoLabeling" class="quiet">Pseudo labeling</button>
     <button id="exportDataset" class="primary">데이터 추출</button>
     <button id="refresh" class="quiet" title="다른 창에서 변경한 상태도 다시 읽습니다">목록 새로고침</button>
   </header>
@@ -133,6 +135,31 @@
     <div id="folderList" class="folder-list"></div>
     <button id="folderSelect" type="button" class="primary">현재 폴더 선택</button>
     <p id="folderStatus" role="status"></p>
+  </dialog>
+  <dialog id="pseudoDialog" aria-labelledby="pseudoTitle">
+    <div class="row"><h2 id="pseudoTitle">Pseudo labeling</h2><button id="pseudoClose" type="button">닫기</button></div>
+    <p>현재 입력 폴더의 프레임을 선택한 모델로 처리합니다. 검수 대기 라벨을 새 출력 폴더에 저장합니다.</p>
+    <label class="field">모델<select id="pseudoModel"></select></label>
+    <p id="pseudoModelHelp" class="help"></p>
+    <label class="field">체크포인트 (.pt · 서버 경로)<input id="pseudoCheckpoint" list="pseudoWeights" autocomplete="off"></label><datalist id="pseudoWeights"></datalist>
+    <button id="pseudoBrowse" type="button">체크포인트 찾아보기</button>
+    <label id="pseudoTemplateField" class="field">검출기 템플릿 (.pt)<input id="pseudoTemplate" autocomplete="off"><button id="pseudoBrowseTemplate" type="button">템플릿 찾아보기</button></label>
+    <p id="pseudoTemplateHelp" class="help">공동 모델은 호환 YOLO26 joint 가중치와 yolo26s.pt 템플릿이 필요합니다.</p>
+    <label class="field">추론 환경의 Python 실행 파일<input id="pseudoPython" autocomplete="off"></label>
+    <p class="help">requirements-pseudo.txt가 설치된 Python을 지정하세요. GUI 자체는 모델 패키지가 없어도 실행됩니다.</p>
+    <label class="field">새 출력 폴더<input id="pseudoOutput" autocomplete="off"></label>
+    <div class="row"><label class="field">장치 (cpu / GPU 번호)<input id="pseudoDevice" value="cpu"></label><label class="field">Confidence<input id="pseudoConf" type="number" value="0.2" min="0" max="1" step="0.05"></label></div>
+    <div class="row"><label class="field">입력 높이<input id="pseudoHeight" type="number" value="352" min="32" step="32"></label><label class="field">입력 너비<input id="pseudoWidth" type="number" value="640" min="32" step="32"></label><label id="pseudoBatchField" class="field">Batch<input id="pseudoBatch" type="number" value="8" min="1" max="128"></label></div>
+    <label class="field">처리할 프레임 수 (0 = 전체)<input id="pseudoLimit" type="number" value="0" min="0"></label>
+    <label id="pseudoMappingField" class="field">클래스 매핑 JSON · 모델 이름/ID → GUI 이름/ID<textarea id="pseudoMapping" rows="3">{}</textarea><span class="help">예: {"person": "Person"}. 세그멘테이션은 세그멘테이션 클래스 이름/ID를 사용하세요. 이름이 같으면 자동 연결하며 매핑 없는 클래스는 제외됩니다.</span></label>
+    <p class="help">세그멘테이션 모델은 마스크를, 검출 모델은 박스를 생성합니다. 다른 작업의 라벨은 초기값으로 남습니다. 기존 라벨과 입력 데이터는 덮어쓰지 않습니다. 모델 가중치는 별도로 넣어야 합니다.</p>
+    <div class="row"><button id="pseudoStart" class="primary" type="button">생성 실행</button><button id="pseudoCancel" type="button">중단</button><button id="pseudoOpenResult" type="button">완료 결과 열기</button></div>
+    <p id="pseudoStatus" role="status"></p><progress id="pseudoProgress" hidden></progress><pre id="pseudoLog"></pre>
+  </dialog>
+  <dialog id="pseudoFileDialog" aria-labelledby="pseudoFileTitle">
+    <div class="row"><h2 id="pseudoFileTitle">모델 체크포인트 선택</h2><button id="pseudoFileClose" type="button">닫기</button></div>
+    <div class="row"><input id="pseudoFilePath" aria-label="체크포인트 폴더"><button id="pseudoFileGo" type="button">이동</button><button id="pseudoFileUp" type="button">상위</button></div>
+    <div id="pseudoFileList" class="folder-list"></div><p id="pseudoFileStatus" role="status"></p>
   </dialog>
 </body>
 </html>

@@ -47,7 +47,7 @@ PYTHON=/path/to/env/bin/python INPUT=/path/to/images OUTPUT_DIR=/path/to/labels 
 
 SAM 설치와 가중치는 선택 사항입니다. `sam/checkpoint/`에 가중치를 넣고 SAM 실행 Python을 지정하세요. 포함점·제외점 → 미리보기 → 적용 → 저장 순서입니다.
 
-자동 라벨 모델 구조는 `pseudo_labeling/model/`, 가중치 위치는 `pseudo_labeling/checkpoint/`입니다. 기존 4클래스 YOLO26-MTL 체크포인트와 대응 NIR 입력이 필요합니다. 실행 방법은 루트 README를 참고하세요.
+자동 라벨 모델 구조와 가중치는 `pseudo_labeling/model/<작업>/network.py` 및 `<작업>/checkpoint/`에 나눠 둡니다. 작업은 segmentation / object_detection / multi_task입니다. RGB 단일 작업 모델 또는 기존 4클래스 RGB/NIR 공동 모델을 GUI에서 선택할 수 있습니다. 실행 방법은 아래 GUI 절차와 루트 README를 참고하세요.
 
 기존 EasyLabeling_Tool과 8765 서버는 이 복사본과 별개입니다. MT-Labeling의 기본 포트는 8766입니다.
 
@@ -63,3 +63,16 @@ SAM 설치와 가중치는 선택 사항입니다. `sam/checkpoint/`에 가중�
 - 설정은 출력 폴더의 `label_schema.json`에 저장되며 이전 설정은 `_schema_history/`에 백업됩니다. 데이터 추출 시 설정과 `classes.txt`를 함께 저장합니다.
 
 자동 라벨 모델의 학습 클래스는 GUI 설정과 별개입니다. 추가한 클래스는 기존 모델이 자동 검출하지 않으며 수동/SAM으로 지정해야 합니다.
+
+## GUI에서 Pseudo labeling 실행
+
+1. **입력·출력 폴더**에서 대상 입력 데이터를 먼저 여세요.
+2. 상단 **Pseudo labeling**을 누르고 segmentation / object_detection / multi_task 모델을 선택하세요.
+3. 해당 `pseudo_labeling/model/<작업>/checkpoint/`에 넣은 .pt 파일을 선택하거나 외부 경로를 지정하세요. multi_task는 호환 joint 체크포인트와 YOLO26 검출기 템플릿이 필요합니다.
+4. `requirements-pseudo.txt`가 설치된 Python 실행 파일과 장치(cpu 또는 GPU 번호)를 지정하세요.
+5. 현재 작업 폴더 및 원본 데이터와 분리된 **새 빈 출력 폴더**를 지정하세요. 프레임 수 0은 전체, 1은 첫 프레임 확인용입니다.
+6. 단일 작업 모델은 GUI 클래스 이름으로 자동 매핑합니다. 다른 이름은 JSON으로 지정하세요. 예: `{"person": "Person"}`. 세그멘테이션은 세그멘테이션 팔레트의 이름/ID를 사용합니다. 매핑 없는 클래스는 생성하지 않고 로그에 표시합니다.
+7. **생성 실행**을 누르고 진행률·로그를 확인하세요. **중단**은 추론을 종료하며 이미 생성된 파일은 남깁니다. 작업 중 창을 닫아도 생성은 계속됩니다. 생성 중 작업 폴더 변경은 차단됩니다.
+8. 완료 후 **완료 결과 열기**를 누르면 새 출력 폴더를 검수할 수 있습니다. 결과는 모두 검수 대기 상태입니다.
+
+가중치는 GitHub에 포함되지 않습니다. 세그멘테이션 단독은 마스크만, 검출 단독은 박스만 생성하며 기존 라벨에 자동 병합하지 않습니다. 공동 모델은 기존 학습 클래스 구성을 사용합니다. 일반 COCO 모델이 도로/Golfcart를 자동으로 인식하는 모델로 바뀌는 것은 아닙니다.

@@ -26,3 +26,7 @@ node_modules/
 /pseudo_labeling/checkpoint/*
 !/pseudo_labeling/checkpoint/.gitkeep
 !/pseudo_labeling/checkpoint/README.md
+
+/pseudo_labeling/model/*/checkpoint/*
+!/pseudo_labeling/model/*/checkpoint/.gitkeep
+!/pseudo_labeling/model/*/checkpoint/README.md

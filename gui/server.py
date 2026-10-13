@@ -21,6 +21,7 @@ from sam.service import (
     DEFAULT_CONFIG,
 )
 from scripts.extract_dataset import DatasetExports, ExportError
+from pseudo_labeling.service import PseudoJobs, ACTIVE
 
 PROJECT = Path(__file__).resolve().parents[1]
 
@@ -30,6 +31,7 @@ class Workspace:
         self.lock = threading.RLock()
         self.store = None
         self.exports = None
+        self.pseudo = PseudoJobs()
         self.open(dataset_root, output_root, allow_empty=allow_empty)
 
     def open(self, dataset_root, output_root, allow_empty=False):
@@ -41,6 +43,10 @@ class Workspace:
         ):
             raise ReviewError("입력 폴더와 출력 폴더를 지정하세요.")
         with self.lock:
+            if self.pseudo.get() and self.pseudo.get()["status"] in ACTIVE:
+                raise ReviewError(
+                    "pseudo labeling이 진행 중입니다. 완료 후 작업 폴더를 바꾸세요.", 409
+                )
             if self.exports and self.exports.thread and self.exports.thread.is_alive():
                 raise ReviewError("데이터 추출이 진행 중입니다. 완료 후 작업 폴더를 바꾸세요.", 409)
             manifest, rows = prepare_workspace(dataset_root, output_root, allow_empty=allow_empty)
@@ -49,11 +55,14 @@ class Workspace:
             self.store, self.exports = new, exports
 
 
-def make_handler(store=None, sam=None, exports=None, workspace=None):
+def make_handler(store=None, sam=None, exports=None, workspace=None, pseudo=None):
     if exports is None and workspace is None:
         exports = DatasetExports(store)
 
     initial_store, initial_exports = store, exports
+    pseudo = pseudo or (
+        workspace.pseudo if workspace else PseudoJobs(store.root.parent / "pseudo_jobs")
+    )
 
     class Handler(BaseHTTPRequestHandler):
         def log_message(self, fmt, *args):
@@ -91,6 +100,7 @@ def make_handler(store=None, sam=None, exports=None, workspace=None):
                     "/workspace.js",
                     "/export.js",
                     "/labels.js",
+                    "/pseudo.js",
                     "/style.css",
                 ):
                     filename = {
@@ -99,6 +109,7 @@ def make_handler(store=None, sam=None, exports=None, workspace=None):
                         "/workspace.js": "workspace.js",
                         "/export.js": "export.js",
                         "/labels.js": "labels.js",
+                        "/pseudo.js": "pseudo.js",
                         "/style.css": "style.css",
                     }[path]
                     file = PROJECT / "gui/web" / filename
@@ -136,9 +147,40 @@ def make_handler(store=None, sam=None, exports=None, workspace=None):
                             "root": str(store.root),
                             "export_parent": str(store.root.parent / "exports"),
                             "dataset_root": str(store.dataset_root),
+                            "pseudo": pseudo.info(),
                             "sam": sam.info()
                             if sam
                             else {"available": False, "message": "SAM이 연결되지 않았습니다."},
+                        }
+                    )
+                if path == "/api/pseudo-labels/latest":
+                    return self.json({"job": pseudo.get()})
+                if path == "/api/pseudo-files":
+                    directory = (
+                        Path(
+                            parse_qs(urlparse(self.path).query).get(
+                                "path", [str(PROJECT / "pseudo_labeling/model")]
+                            )[0]
+                        )
+                        .expanduser()
+                        .resolve()
+                    )
+                    if not directory.is_dir():
+                        raise ReviewError("폴더가 없습니다: " + str(directory))
+                    return self.json(
+                        {
+                            "path": str(directory),
+                            "parent": str(directory.parent),
+                            "folders": [
+                                {"name": p.name, "path": str(p.resolve())}
+                                for p in sorted(directory.iterdir())
+                                if p.is_dir() and not p.name.startswith(".")
+                            ],
+                            "files": [
+                                {"name": p.name, "path": str(p.resolve())}
+                                for p in sorted(directory.iterdir())
+                                if p.is_file() and p.suffix.lower() == ".pt"
+                            ],
                         }
                     )
                 if path == "/api/dataset-exports/latest":
@@ -189,6 +231,17 @@ def make_handler(store=None, sam=None, exports=None, workspace=None):
                 if not 0 < length <= 32 * 1024 * 1024:
                     raise ReviewError("저장 요청 크기가 올바르지 않습니다.", 413)
                 parts = urlparse(self.path).path.strip("/").split("/")
+                if parts == ["api", "pseudo-labels"]:
+                    payload = json.loads(self.rfile.read(length))
+                    if workspace:
+                        with workspace.lock:
+                            job = pseudo.start(payload, workspace.store)
+                    else:
+                        job = pseudo.start(payload, store)
+                    return self.json({"job": job}, status=202)
+                if parts == ["api", "pseudo-labels", "cancel"]:
+                    self.rfile.read(length)
+                    return self.json({"job": pseudo.cancel()})
                 if parts == ["api", "label-schema"]:
                     payload = json.loads(self.rfile.read(length))
                     store.save_schema(payload)
@@ -275,6 +328,7 @@ def main():
         pass
     finally:
         server.server_close()
+        workspace.pseudo.close()
         sam.close()
 
 

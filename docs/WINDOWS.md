@@ -100,3 +100,14 @@ Change `--sam-device` to `cuda:0` for a compatible GPU. SAM/Ultralytics dependen
 ## Compatibility checks
 
 The GitHub Actions matrix runs on actual Windows and Ubuntu with Python 3.10, 3.11 and 3.12. It exercises GUI startup, save/backup/rollback, labels, exports, process locks, Unicode paths, and SAM worker-pipe contracts without downloading model weights. GPU/model accuracy tests require your own model environment and weights.
+
+## Launch pseudo labels from the GUI
+
+The **Pseudo labeling** button supports RGB YOLO segmentation, RGB YOLO detection and the existing RGB/NIR joint model. Store `.pt` weights in `pseudo_labeling/model/<task>/checkpoint/`, or browse an external checkpoint. In the dialog select the inference environment's `python.exe`, device and a new empty output folder. You can set the default environment before starting the GUI:
+
+```bat
+set "PSEUDO_PYTHON=D:\model-env\Scripts\python.exe"
+run_gui.bat
+```
+
+Install `requirements-pseudo.txt` with that interpreter. The task-specific network loaders and checkpoint subfolders are shared with Linux. Native Windows generation uses a separate process and zero DataLoader workers for joint jobs launched from the GUI.

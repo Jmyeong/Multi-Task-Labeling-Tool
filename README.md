@@ -1,6 +1,6 @@
 # MT-Labeling
 
-A local browser editor for detection boxes and binary road segmentation. It preserves the manual editing, SAM prompts, review status, backups, and approved-data export workflow of EasyLabeling_Tool. VLM functionality and training code are excluded.
+A local browser editor for detection boxes and semantic segmentation. It preserves the manual editing, SAM prompts, review status, backups, and approved-data export workflow of EasyLabeling_Tool. VLM functionality and training code are excluded.
 
 [한국어 사용 안내](docs/GUI_GUIDE.md) · [Code structure](docs/STRUCTURE.md) · [Windows setup](docs/WINDOWS.md)
 
@@ -37,8 +37,10 @@ MT-Labeling/
 │   └── checkpoint/         User-supplied SAM weights
 ├── scripts/                Prepare input, generate labels, filter and export
 ├── pseudo_labeling/
-│   ├── model/              Joint YOLO26 model, checkpoint loader and preprocessing
-│   └── checkpoint/         User-supplied pseudo-label weights
+│   └── model/
+│       ├── segmentation/       RGB YOLO segmentation network + checkpoint/
+│       ├── object_detection/   RGB YOLO detection network + checkpoint/
+│       └── multi_task/         Joint RGB/NIR model + checkpoint/
 ├── dataset/                User input images (or select an external folder)
 ├── outputs/                Editable labels, manifests, backups and exports
 ├── run.py                  Shared Windows/Linux GUI and pseudo-label launcher
@@ -70,20 +72,33 @@ SAM starts lazily when requested, previews the mask without saving, and applies 
 
 ## Automatic labels
 
-Install a compatible PyTorch/torchvision pair for your hardware and `pip install -r requirements-pseudo.txt`. Put **compatible joint-model weights** and the detector template in `pseudo_labeling/checkpoint/`. Standard COCO-only and DAv2-MTL checkpoints are incompatible. No dataset or weights are bundled.
+Click **Pseudo labeling** in the GUI. Select segmentation, object detection or multi-task, choose a local `.pt` checkpoint, set the inference Python environment, device and a **new empty output folder**, then click **생성 실행**. Progress, logs, cancellation and **완료 결과 열기** are available in the dialog. Generation uses the current input folder, preserves input files and existing editor labels, and creates pending annotations for review. Closing the dialog does not stop the job. Job configuration/status/logs are saved under `outputs/pseudo_jobs/`.
+
+Install the appropriate PyTorch/torchvision build and `python -m pip install -r requirements-pseudo.txt` in the inference environment. `PSEUDO_PYTHON` sets the GUI's default model interpreter; it can also be entered in the dialog. Manual editing still works without model packages.
+
+| Selection | Network / weights | Inputs and output |
+|---|---|---|
+| segmentation | `pseudo_labeling/model/segmentation/network.py`, `checkpoint/*.pt` | Ultralytics YOLO instance-segmentation model, RGB → semantic class-ID PNG |
+| object_detection | `pseudo_labeling/model/object_detection/network.py`, `checkpoint/*.pt` | Ultralytics YOLO detection model, RGB → YOLO boxes |
+| multi_task | `pseudo_labeling/model/multi_task/network.py`, `yolo26.py`, `checkpoint.py`, `checkpoint/*.pt` | Existing compatible YOLO26 joint RGB/NIR model → boxes + binary road mask; requires detector template |
+
+Checkpoints are user supplied. External checkpoint paths are also accepted. The single-task loaders use the architecture embedded in the Ultralytics `.pt` checkpoint; modifying a loader alone cannot convert incompatible weights. DAv2-MTL and arbitrary raw state dictionaries are not supported by these loaders.
+
+**Class mapping:** single-task models map checkpoint class names to active GUI class names (case-insensitive), never by identical numeric IDs. Supply JSON such as `{"person": "Person"}` or `{"0": 1}` to override. Segmentation uses the segmentation palette; detection uses box classes. Unmapped classes are skipped and logged; zero matched classes is an error. Overlapping masks use the prediction with the highest confidence. Segmentation-only jobs leave boxes empty; detection-only jobs leave the mask at background 0. These are separate outputs, not a merge into existing annotations.
+
+The joint model retains its trained Golfcart/Person/Tree/Undef_obj and binary road mapping. It requires the default class names/active targets and matched NIR. Standard COCO weights and DAv2-MTL checkpoints are incompatible with the joint loader. Road predictions near the confidence threshold may be marked 255/ignore. The GUI also includes frames with source semantic/instance labels, but never changes their source labels.
+
+The existing joint CLI remains available on Windows and Linux:
 
 ```bash
-INPUT=/path/to/rgb-nir-dataset OUTPUT_DIR=/path/to/pseudo-labels \
+INPUT=/path/to/rgb-nir-dataset OUTPUT_DIR=/path/to/new-pseudo-labels \
 CHECKPOINT=/path/to/best_joint.pt MODEL_TEMPLATE=/path/to/yolo26s.pt \
 DEVICE=0 ./run_pseudo.sh --batch 8
-
-# Review the generated annotations:
-INPUT=/path/to/rgb-nir-dataset OUTPUT_DIR=/path/to/pseudo-labels ./run_gui.sh
+# Windows: set the same variables and run run_pseudo.bat
+# Review: select the generated output folder in the GUI.
 ```
 
-GUI class settings do not retrain the automatic model: it still predicts its original four detection classes and binary road mask. Additional classes can be labeled manually or with SAM. If original model class names/IDs are changed, use a separate default workspace for automatic generation.
-
-Existing RGB/NIR fusion models require matched NIR images. Automatic generation selects frames without semantic/instance labels. Default input is 352×640; the existing model and letterbox geometry are preserved. The generator resumes compatible completed outputs and refuses to overwrite labels from another generation configuration. Use a new output folder rather than the blank manual workspace for first-time generation. Legacy `hsvnet` checkpoints also require their separately installed fusion repository and weights via `--fusion-repo` and `--fusion-checkpoint`.
+The joint CLI defaults to unlabeled source frames; `--include-labeled` includes all frames. Generation resumes compatible outputs without replacing completed annotations; a different model/configuration requires a new output. GUI launches always require an empty new folder. Legacy `hsvnet` checkpoints additionally require the separately installed fusion repository and weights via CLI `--fusion-repo` and `--fusion-checkpoint`. Input defaults to 352×640. Small shim modules at the previous `pseudo_labeling/model/*.py` paths retain import compatibility; network code now lives under `multi_task/`.
 
 ## Utilities
 

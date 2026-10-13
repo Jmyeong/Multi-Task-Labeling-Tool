@@ -28,9 +28,9 @@ def launch_arguments(mode, extra, environment=None):
             "--output-root",
             env.get("OUTPUT_DIR") or str(PROJECT / "outputs/pseudo_labels"),
             "--checkpoint",
-            env.get("CHECKPOINT") or str(PROJECT / "pseudo_labeling/checkpoint/best_joint.pt"),
+            env.get("CHECKPOINT") or str(PROJECT / "pseudo_labeling/model/multi_task/checkpoint/best_joint.pt"),
             "--model-template",
-            env.get("MODEL_TEMPLATE") or str(PROJECT / "pseudo_labeling/checkpoint/yolo26s.pt"),
+            env.get("MODEL_TEMPLATE") or str(PROJECT / "pseudo_labeling/model/multi_task/checkpoint/yolo26s.pt"),
             "--device",
             env.get("DEVICE") or "cpu",
         ]
