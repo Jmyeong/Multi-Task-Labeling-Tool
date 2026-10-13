@@ -25,7 +25,7 @@ INPUT=/path/to/images OUTPUT_DIR=/path/to/annotations PORT=8766 ./run_gui.sh
 ./run_gui.sh --dataset-root /path/to/images --output-root /path/to/annotations
 ```
 
-`PYTHON=/path/to/python` selects an existing environment. New outputs start with empty boxes and a 255/ignore mask. Reopening an existing output preserves saved edits. Input images and input manifests are never overwritten.
+`PYTHON=/path/to/python` selects an existing environment. New outputs start with empty boxes and a 0/background mask, with review status pending. Reopening an existing output preserves saved edits, including existing ignore pixels. Input images and input manifests are never overwritten.
 
 ## Layout
 

@@ -50,7 +50,7 @@ class WorkspaceTests(unittest.TestCase):
         store = workspace.store
         fid, payload = self.payload(store)
         initial = store.load(fid)
-        self.assertEqual(set(base64.b64decode(initial["mask"])), {255})
+        self.assertEqual(set(base64.b64decode(initial["mask"])), {0})
         store.save(fid, payload)
         manifest = self.output / "workspace_manifest.csv"
         self.assertEqual(len(read_manifest(self.source, manifest)), 1)

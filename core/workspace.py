@@ -210,7 +210,7 @@ def _write_workspace(source, output, rows, initialize):
                 detections=[],
                 detection_count=0,
                 road_fraction=0,
-                uncertain_fraction=1.0,
+                uncertain_fraction=0.0,
                 label_source="manual",
                 generation_signature="manual-import",
             )
@@ -239,7 +239,7 @@ def _write_workspace(source, output, rows, initialize):
                 mask = inside(output, paths["road_file"])
                 mask.parent.mkdir(parents=True, exist_ok=True)
                 png = io.BytesIO()
-                Image.fromarray(np.full((height, width), 255, np.uint8)).save(png, format="PNG")
+                Image.fromarray(np.zeros((height, width), np.uint8)).save(png, format="PNG")
                 atomic_bytes(mask, png.getvalue())
                 atomic_bytes(annotation, json_bytes(record))
     atomic_bytes(manifest, buffer.getvalue().encode("utf-8-sig"))
