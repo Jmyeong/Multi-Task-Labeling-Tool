@@ -1,3 +1,3 @@
-Ultralytics YOLO segmentation checkpoints (*-seg.pt or your trained segmentation model).
+Run `python -m scripts.download_example_models grounded-sam` to install Grounding DINO Tiny, original SAM ViT-B and grounded_sam.json here. YOLO segmentation .pt checkpoints are also accepted.
 
-Weights are user supplied and excluded from Git. External paths are also accepted in the GUI.
+Weights and local bundle files are user-side downloads, excluded from Git. See the project README for text prompts and upstream sources.

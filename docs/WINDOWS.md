@@ -111,3 +111,14 @@ run_gui.bat
 ```
 
 Install `requirements-pseudo.txt` with that interpreter. The task-specific network loaders and checkpoint subfolders are shared with Linux. Native Windows generation uses a separate process and zero DataLoader workers for joint jobs launched from the GUI.
+
+## Official YOLO26 / Grounded-SAM examples
+
+In a compatible model environment, run the same commands as Linux:
+
+```bat
+python -m pip install -r requirements-grounded-sam.txt
+python -m scripts.download_example_models all
+```
+
+Select `yolo26n.pt` for detection or `grounded_sam.json` for segmentation in **Pseudo labeling**. Grounded-SAM combines Grounding DINO Tiny and original SAM ViT-B through Hugging Face Transformers. No local GroundingDINO CUDA-extension compiler is needed. Set English prompt mappings (for example `{"road": 1}`) and the model environment's `python.exe`. This is separate from the interactive SAM 2 point-click tool.

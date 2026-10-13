@@ -179,7 +179,8 @@ def make_handler(store=None, sam=None, exports=None, workspace=None, pseudo=None
                             "files": [
                                 {"name": p.name, "path": str(p.resolve())}
                                 for p in sorted(directory.iterdir())
-                                if p.is_file() and p.suffix.lower() == ".pt"
+                                if p.is_file()
+                                and (p.suffix.lower() == ".pt" or p.name == "grounded_sam.json")
                             ],
                         }
                     )

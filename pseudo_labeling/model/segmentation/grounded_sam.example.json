@@ -1,0 +1,10 @@
+{
+  "architecture": "grounded_sam",
+  "grounding_dino": "checkpoint/grounding_dino",
+  "sam": "checkpoint/sam",
+  "prompts": {"road": 1},
+  "model_ids": {
+    "grounding_dino": "IDEA-Research/grounding-dino-tiny",
+    "sam": "facebook/sam-vit-base"
+  }
+}

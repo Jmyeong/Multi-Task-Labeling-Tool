@@ -1,0 +1,6 @@
+-r requirements-pseudo.txt
+# Pure-PyTorch Hugging Face implementation of Grounding DINO + original SAM.
+# No compiled GroundingDINO extension is needed on Windows or Linux.
+transformers>=4.51,<5
+huggingface-hub>=0.34,<1
+safetensors>=0.4,<1

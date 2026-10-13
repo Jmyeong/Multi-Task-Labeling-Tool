@@ -87,8 +87,11 @@ class PseudoJobs:
             ):
                 raise ReviewError(f"모델 파일이 없습니다: {key}")
             config[key] = str(Path(value).expanduser().resolve())
-            if Path(config[key]).suffix.lower() != ".pt":
-                raise ReviewError("이 모델은 .pt 체크포인트를 사용합니다.")
+            suffix = Path(config[key]).suffix.lower()
+            if suffix != ".pt" and not (
+                task == "segmentation" and key == "checkpoint" and suffix == ".json"
+            ):
+                raise ReviewError("YOLO는 .pt, Grounded-SAM은 모델 번들 .json을 선택하세요.")
         interpreter = payload.get("python") or self.info()["python"]
         executable = shutil.which(interpreter) if isinstance(interpreter, str) else None
         if not executable:
@@ -120,6 +123,30 @@ class PseudoJobs:
         ):
             raise ReviewError("클래스 매핑은 모델 이름/ID → GUI 이름/ID JSON 객체입니다.")
         config["class_mapping"] = mapping
+        text_threshold = payload.get("text_threshold", 0.25)
+        if type(text_threshold) not in (int, float) or not 0 <= text_threshold <= 1:
+            raise ReviewError("text threshold는 0~1이어야 합니다.")
+        config["text_threshold"] = text_threshold
+        if task == "segmentation" and Path(config["checkpoint"]).suffix.lower() == ".json":
+            from pseudo_labeling.model.segmentation.grounded_sam import (
+                bundle_paths,
+                validate_prompts,
+            )
+
+            try:
+                bundle, _ = bundle_paths(config["checkpoint"])
+                config["class_mapping"] = validate_prompts(
+                    mapping or bundle.get("prompts", {"road": 1})
+                )
+                from pseudo_labeling.predictions import class_mapping
+
+                class_mapping(
+                    dict(enumerate(config["class_mapping"])),
+                    config["schema"]["segmentation"],
+                    config["class_mapping"],
+                )
+            except (ValueError, KeyError, OSError) as error:
+                raise ReviewError(str(error)) from error
         if task == "multi_task":
             for kind in ("detection", "segmentation"):
                 by_id = {t["id"]: t for t in config["schema"][kind]}

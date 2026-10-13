@@ -76,3 +76,19 @@ SAM 설치와 가중치는 선택 사항입니다. `sam/checkpoint/`에 가중�
 8. 완료 후 **완료 결과 열기**를 누르면 새 출력 폴더를 검수할 수 있습니다. 결과는 모두 검수 대기 상태입니다.
 
 가중치는 GitHub에 포함되지 않습니다. 세그멘테이션 단독은 마스크만, 검출 단독은 박스만 생성하며 기존 라벨에 자동 병합하지 않습니다. 공동 모델은 기존 학습 클래스 구성을 사용합니다. 일반 COCO 모델이 도로/Golfcart를 자동으로 인식하는 모델로 바뀌는 것은 아닙니다.
+
+## 공식 모델 예시
+
+공식 YOLO26n(객체 검출)과 Grounded-SAM(세그멘테이션)을 사용할 수 있습니다. 가중치는 GitHub에 포함하지 않으며, 아래 명령으로 각 모델의 checkpoint 폴더에 설치합니다.
+
+```bash
+python -m pip install -r requirements-grounded-sam.txt
+python -m scripts.download_example_models all
+```
+
+- 객체 검출: 공식 COCO 사전학습 `yolo26n.pt`. 기본 Person 클래스는 이름으로 연결됩니다. COCO에는 Golfcart/Tree가 없으므로 다른 클래스로 자동 치환하지 않습니다.
+- 세그멘테이션: `grounded_sam.json` 선택. Grounding DINO Tiny가 영어 텍스트로 박스를 찾고, SAM ViT-B가 그 박스의 마스크를 생성합니다. `{"road": 1}`은 도로 프롬프트를 GUI ID 1에 연결합니다. 여러 대상은 `{"road": 1, "water": 2}`처럼 지정하되 ID 2를 GUI에 먼저 추가하세요.
+- Grounded-SAM을 선택하면 Text threshold가 표시됩니다. 두 모델은 고유 리사이즈를 사용하므로 YOLO 입력 높이·너비는 숨겨집니다. 최종 마스크는 원본 RGB 픽셀 좌표로 저장합니다.
+- `.json`은 가중치 파일이 아니라 로컬 Grounding DINO/SAM 폴더 경로와 다운로드 revision을 기록한 번들 설정입니다. 실제 가중치는 그 옆의 하위 폴더에 있습니다.
+
+추론용 Python에 모델 패키지가 필요합니다. 서버에서는 별도 `.venv-pseudo` 환경을 기본으로 사용합니다. 원본 데이터는 수정하지 않으며, 생성한 pending 결과를 검수한 뒤 승인하세요.

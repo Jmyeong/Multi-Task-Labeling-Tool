@@ -1,19 +1,23 @@
 "use strict";
 const PJ={job:null,sending:false,polling:false,error:""};
 function pseudoActive(){return PJ.job && ['queued','running','cancelling'].includes(PJ.job.status);}
+function pseudoGrounded(){return $('pseudoModel').value==='segmentation' && $('pseudoCheckpoint').value.toLowerCase().endsWith('.json');}
 function pseudoModel(){return S.config.pseudo.models.find(m=>m.id===$('pseudoModel').value);}
 function renderPseudo(){
   const active=Boolean(pseudoActive()||PJ.sending), multi=$('pseudoModel').value==='multi_task';
-  for(const id of ['pseudoModel','pseudoCheckpoint','pseudoTemplate','pseudoPython','pseudoOutput','pseudoDevice','pseudoConf','pseudoLimit','pseudoMapping','pseudoHeight','pseudoWidth','pseudoBatch','pseudoBrowse','pseudoBrowseTemplate'])$(id).disabled=active;
+  for(const id of ['pseudoModel','pseudoCheckpoint','pseudoTemplate','pseudoPython','pseudoOutput','pseudoDevice','pseudoConf','pseudoLimit','pseudoMapping','pseudoHeight','pseudoWidth','pseudoBatch','pseudoBrowse','pseudoBrowseTemplate','pseudoTextThreshold'])$(id).disabled=active;
   $('pseudoTemplateField').hidden=$('pseudoTemplateHelp').hidden=!multi;
   $('pseudoMappingField').hidden=multi;
   $('pseudoBatchField').hidden=!multi;
+  $('pseudoTextThresholdField').hidden=!pseudoGrounded();
+  $('pseudoSizeFields').hidden=pseudoGrounded();
+  $('pseudoMappingLabel').textContent=pseudoGrounded()?'텍스트 프롬프트 JSON · 영어 대상 → 세그멘테이션 클래스':'클래스 매핑 JSON · 모델 이름/ID → GUI 이름/ID';
   $('pseudoStart').disabled=active;
   $('pseudoCancel').disabled=!pseudoActive();
   $('pseudoOpenResult').disabled=active || PJ.job?.status!=='completed';
   if(PJ.error)$('pseudoStatus').textContent=PJ.error;
   const model=pseudoModel();
-  $('pseudoModelHelp').textContent=model ? (model.nir?'RGB와 대응 NIR이 필요합니다. 기존 공동 모델의 클래스 구성을 사용합니다.':'RGB만 사용합니다. 클래스 이름이 일치하면 자동 연결하며, 다른 클래스는 아래 JSON 매핑으로 지정합니다.') : '';
+  $('pseudoModelHelp').textContent=model ? (pseudoGrounded()?'영어 텍스트 → Grounding DINO 검출 → SAM 마스크. 예: {"road": 1}. 모델 고유 리사이즈를 사용합니다.':model.nir?'RGB와 대응 NIR이 필요합니다. 기존 공동 모델의 클래스 구성을 사용합니다.':'RGB만 사용합니다. 클래스 이름이 일치하면 자동 연결하며, 다른 클래스는 아래 JSON 매핑으로 지정합니다.') : '';
   $('pseudoProgress').hidden=!PJ.job;
   if(PJ.job){
     const job=PJ.job;
@@ -27,11 +31,11 @@ function renderPseudo(){
 function defaultCheckpoint(){
   const model=pseudoModel();
   if(!model)return;
-  $('pseudoCheckpoint').value=model.checkpoints.find(p=>!p.endsWith('yolo26s.pt'))||'';
+  $('pseudoCheckpoint').value=model.checkpoints.find(p=>p===model.default_checkpoint)||model.checkpoints.find(p=>!p.endsWith('yolo26s.pt'))||'';
   $('pseudoTemplate').value=model.checkpoints.find(p=>p.endsWith('yolo26s.pt'))||'';
   $('pseudoWeights').replaceChildren();
   model.checkpoints.forEach(p=>$('pseudoWeights').append(new Option(p,p)));
-  $('pseudoMapping').value='{}';renderPseudo();
+  $('pseudoMapping').value=pseudoGrounded()?JSON.stringify({road:1}):'{}';renderPseudo();
 }
 async function pollPseudo(){
   if(PJ.polling||PJ.sending)return;
@@ -57,11 +61,12 @@ $('pseudoLabeling').onclick=async()=>{
 };
 $('pseudoClose').onclick=()=>$('pseudoDialog').close();
 $('pseudoModel').onchange=defaultCheckpoint;
+$('pseudoCheckpoint').oninput=()=>renderPseudo();
 $('pseudoStart').onclick=async()=>{
   if(!canLeave())return;
   PJ.error="";PJ.sending=true;renderPseudo();
   try{
-    const payload={task:$('pseudoModel').value,checkpoint:$('pseudoCheckpoint').value.trim(),model_template:$('pseudoTemplate').value.trim(),python:$('pseudoPython').value.trim(),output_root:$('pseudoOutput').value.trim(),device:$('pseudoDevice').value.trim(),conf:Number($('pseudoConf').value),limit:Number($('pseudoLimit').value),height:Number($('pseudoHeight').value),width:Number($('pseudoWidth').value),batch:Number($('pseudoBatch').value),class_mapping:$('pseudoModel').value==='multi_task'?{}:JSON.parse($('pseudoMapping').value)};
+    const payload={task:$('pseudoModel').value,checkpoint:$('pseudoCheckpoint').value.trim(),model_template:$('pseudoTemplate').value.trim(),python:$('pseudoPython').value.trim(),output_root:$('pseudoOutput').value.trim(),device:$('pseudoDevice').value.trim(),conf:Number($('pseudoConf').value),limit:Number($('pseudoLimit').value),height:Number($('pseudoHeight').value),width:Number($('pseudoWidth').value),batch:Number($('pseudoBatch').value),text_threshold:Number($('pseudoTextThreshold').value),class_mapping:$('pseudoModel').value==='multi_task'?{}:JSON.parse($('pseudoMapping').value)};
     PJ.job=(await api('/api/pseudo-labels',{method:'POST',headers:{'Content-Type':'application/json','X-Review-Token':S.config.token},body:JSON.stringify(payload)})).job;
   }catch(error){PJ.error=error.message;toast(error.message,true);}
   finally{PJ.sending=false;renderPseudo();}
@@ -87,8 +92,8 @@ async function browsePseudoFiles(path){
     $('pseudoFilePath').value=data.path;
     $('pseudoFileUp').onclick=()=>browsePseudoFiles(data.parent);
     for(const folder of data.folders){const b=document.createElement('button');b.textContent='📁 '+folder.name;b.onclick=()=>browsePseudoFiles(folder.path);$('pseudoFileList').append(b);}
-    for(const file of data.files){const b=document.createElement('button');b.textContent=file.name;b.onclick=()=>{$(pseudoFileTarget).value=file.path;$('pseudoFileDialog').close();};$('pseudoFileList').append(b);}
-    $('pseudoFileStatus').textContent=data.files.length?'체크포인트를 클릭해서 선택하세요.':'이 폴더에는 .pt 체크포인트가 없습니다. 경로를 이동하거나 파일을 넣으세요.';
+    for(const file of data.files){const b=document.createElement('button');b.textContent=file.name;b.onclick=()=>{$(pseudoFileTarget).value=file.path;if(pseudoGrounded()&&$('pseudoMapping').value.trim()==='{}')$('pseudoMapping').value=JSON.stringify({road:1});renderPseudo();$('pseudoFileDialog').close();};$('pseudoFileList').append(b);}
+    $('pseudoFileStatus').textContent=data.files.length?'체크포인트를 클릭해서 선택하세요.':'이 폴더에는 .pt 또는 Grounded-SAM 번들 .json이 없습니다. 경로를 이동하거나 파일을 넣으세요.';
   }catch(error){if(request===pseudoFileRequest)$('pseudoFileStatus').textContent=error.message;}
 }
 for(const [button,target] of [['pseudoBrowse','pseudoCheckpoint'],['pseudoBrowseTemplate','pseudoTemplate']])$(button).onclick=()=>{pseudoFileTarget=target;$('pseudoFileDialog').showModal();browsePseudoFiles(pseudoModel().checkpoint_dir);};

@@ -2,6 +2,7 @@
 
 import base64
 import io
+import json
 from pathlib import Path
 import sys
 import tempfile
@@ -180,6 +181,97 @@ class PseudoTests(unittest.TestCase):
             jobs.thread.join(10)
         self.assertEqual(jobs.get()["status"], "error")
         self.assertIn("exit 1", jobs.get()["error"])
+
+    def test_grounded_bundle_prompts_and_lazy_model_loading(self):
+        from pseudo_labeling.model.segmentation.grounded_sam import (
+            GroundedSAM,
+            bundle_paths,
+            validate_prompts,
+        )
+
+        bundle = self.base / "grounded_sam.json"
+        for name in ["grounding_dino", "sam"]:
+            directory = self.base / name
+            directory.mkdir()
+            (directory / "config.json").write_text("{}", encoding="utf-8")
+            (directory / "model.safetensors").write_bytes(b"test")
+        config = dict(
+            architecture="grounded_sam",
+            grounding_dino="grounding_dino",
+            sam="sam",
+            prompts={"road": 1},
+        )
+        bundle.write_text(json.dumps(config), encoding="utf-8")
+        model = GroundedSAM(bundle)
+        self.assertIsNone(model.sam)
+        self.assertEqual(model.names, {0: "road"})
+        model.configure({"road": 1, "water": 2}, 0.3)
+        self.assertEqual(model.names, {0: "road", 1: "water"})
+        for prompts in [{}, {"": 1}, {"road\nwater": 1}, {"road": []}]:
+            with self.assertRaises(ValueError):
+                validate_prompts(prompts)
+        (self.base / "sam" / "model.safetensors").unlink()
+        with self.assertRaises(FileNotFoundError):
+            bundle_paths(bundle)
+
+    def test_grounded_job_validates_semantic_targets(self):
+        workspace = Workspace(self.source, self.base / "manual")
+        jobs = PseudoJobs(self.base / "jobs")
+        bundle = self.base / "grounded_sam.json"
+        for name in ["grounding_dino", "sam"]:
+            directory = self.base / name
+            directory.mkdir()
+            (directory / "config.json").write_text("{}", encoding="utf-8")
+            (directory / "model.safetensors").write_bytes(b"test")
+        bundle.write_text(
+            json.dumps(
+                dict(architecture="grounded_sam", grounding_dino="grounding_dino", sam="sam")
+            ),
+            encoding="utf-8",
+        )
+        payload = dict(
+            task="segmentation",
+            checkpoint=str(bundle),
+            python=sys.executable,
+            output_root=str(self.base / "generated"),
+            class_mapping={"road": 255},
+        )
+        with self.assertRaises(ReviewError):
+            jobs.start(payload, workspace.store)
+        with self.assertRaises(ReviewError):
+            jobs.start(dict(payload, class_mapping={"road": 999}), workspace.store)
+        with self.assertRaises(ReviewError):
+            jobs.start(dict(payload, class_mapping={"road": 1}, text_threshold=2), workspace.store)
+
+    def test_grounded_weight_changes_invalidate_resumed_output(self):
+        from pseudo_labeling.model.segmentation.grounded_sam import GroundedSAM
+
+        bundle = self.base / "grounded_sam.json"
+        for name in ["grounding_dino", "sam"]:
+            directory = self.base / name
+            directory.mkdir()
+            (directory / "config.json").write_text("{}", encoding="utf-8")
+            (directory / "model.safetensors").write_bytes(b"test")
+        bundle.write_text(
+            json.dumps(
+                dict(architecture="grounded_sam", grounding_dino="grounding_dino", sam="sam")
+            ),
+            encoding="utf-8",
+        )
+        network = GroundedSAM(bundle)
+        network.predict = lambda **kw: [result("segmentation")]
+        config = dict(
+            self.config("segmentation"), checkpoint=str(bundle), class_mapping={"road": 1}
+        )
+        with patch(
+            "scripts.generate_single_task.importlib.import_module",
+            return_value=SimpleNamespace(load_network=lambda _: network),
+        ):
+            generate(config)
+            generate(config)
+            (self.base / "sam" / "model.safetensors").write_bytes(b"changed model")
+            with self.assertRaises(ValueError):
+                generate(config)
 
     def test_model_catalog_contains_real_network_and_checkpoint_paths(self):
         from pseudo_labeling.registry import MODEL_ROOT

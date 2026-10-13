@@ -1,3 +1,3 @@
-Ultralytics YOLO detection checkpoints (.pt).
+Run `python -m scripts.download_example_models yolo26` to install the official COCO-pretrained yolo26n.pt here. Compatible custom-trained YOLO detection .pt checkpoints are also accepted.
 
-Weights are user supplied and excluded from Git. External paths are also accepted in the GUI.
+Weights are excluded from Git. COCO class names are mapped by name; the default Person target matches person.

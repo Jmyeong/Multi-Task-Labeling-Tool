@@ -71,6 +71,12 @@ def generate(config):
     if not weight.is_file():
         raise FileNotFoundError(weight)
     network = importlib.import_module(f"pseudo_labeling.model.{task}.network").load_network(weight)
+    if weight.suffix.lower() == ".json":
+        network.configure(
+            config.get("class_mapping") or network.bundle.get("prompts", {"road": 1}),
+            config.get("text_threshold", 0.25),
+        )
+        config["class_mapping"] = network.prompts
     schema = config["schema"]
     mapping = class_mapping(
         network.names,
@@ -83,6 +89,13 @@ def generate(config):
     if missing:
         print("Unmapped classes skipped: " + json.dumps(missing, ensure_ascii=False), flush=True)
     identity = {**config, "checkpoint_sha256": file_hash(weight)}
+    if weight.suffix.lower() == ".json":
+        identity["model_files_sha256"] = {
+            f"{name}/{p.name}": file_hash(p)
+            for name, directory in network.paths.items()
+            for p in sorted(directory.iterdir())
+            if p.is_file() and p.suffix in (".json", ".txt", ".safetensors")
+        }
     signature = hashlib.sha256(json_bytes(identity)).hexdigest()
     root.mkdir(parents=True, exist_ok=True)
     run_file = root / "run.json"

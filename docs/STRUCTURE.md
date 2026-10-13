@@ -62,3 +62,5 @@ The existing YOLO normalized-box format and PNG mask storage are retained. Dynam
 | `pseudo_labeling/model/multi_task/network.py` | Joint network/loader entry point |
 
 Keep user weights inside each task's `checkpoint/`, or select an external path. Compatibility shims at the old model module paths support older imports. The GUI chooses only catalogued loaders, not arbitrary uploaded Python code.
+
+Official examples are installed by `scripts/download_example_models.py`. The detection loader accepts official YOLO26 checkpoints. `segmentation/grounded_sam.py` implements text-prompt grounding followed by SAM masks, while `segmentation/network.py` dispatches bundle JSONs or legacy YOLO `.pt` weights. `grounded_sam.example.json` illustrates the bundle format. Downloaded model directories and local environment files remain excluded from Git.

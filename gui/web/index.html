@@ -141,17 +141,18 @@
     <p>현재 입력 폴더의 프레임을 선택한 모델로 처리합니다. 검수 대기 라벨을 새 출력 폴더에 저장합니다.</p>
     <label class="field">모델<select id="pseudoModel"></select></label>
     <p id="pseudoModelHelp" class="help"></p>
-    <label class="field">체크포인트 (.pt · 서버 경로)<input id="pseudoCheckpoint" list="pseudoWeights" autocomplete="off"></label><datalist id="pseudoWeights"></datalist>
+    <label class="field">체크포인트 (.pt / Grounded-SAM .json · 서버 경로)<input id="pseudoCheckpoint" list="pseudoWeights" autocomplete="off"></label><datalist id="pseudoWeights"></datalist>
     <button id="pseudoBrowse" type="button">체크포인트 찾아보기</button>
     <label id="pseudoTemplateField" class="field">검출기 템플릿 (.pt)<input id="pseudoTemplate" autocomplete="off"><button id="pseudoBrowseTemplate" type="button">템플릿 찾아보기</button></label>
     <p id="pseudoTemplateHelp" class="help">공동 모델은 호환 YOLO26 joint 가중치와 yolo26s.pt 템플릿이 필요합니다.</p>
     <label class="field">추론 환경의 Python 실행 파일<input id="pseudoPython" autocomplete="off"></label>
-    <p class="help">requirements-pseudo.txt가 설치된 Python을 지정하세요. GUI 자체는 모델 패키지가 없어도 실행됩니다.</p>
+    <p class="help">YOLO는 requirements-pseudo.txt, Grounded-SAM은 requirements-grounded-sam.txt가 설치된 Python을 지정하세요. GUI 자체는 모델 패키지가 없어도 실행됩니다.</p>
     <label class="field">새 출력 폴더<input id="pseudoOutput" autocomplete="off"></label>
     <div class="row"><label class="field">장치 (cpu / GPU 번호)<input id="pseudoDevice" value="cpu"></label><label class="field">Confidence<input id="pseudoConf" type="number" value="0.2" min="0" max="1" step="0.05"></label></div>
-    <div class="row"><label class="field">입력 높이<input id="pseudoHeight" type="number" value="352" min="32" step="32"></label><label class="field">입력 너비<input id="pseudoWidth" type="number" value="640" min="32" step="32"></label><label id="pseudoBatchField" class="field">Batch<input id="pseudoBatch" type="number" value="8" min="1" max="128"></label></div>
+    <div id="pseudoSizeFields" class="row"><label class="field">입력 높이<input id="pseudoHeight" type="number" value="352" min="32" step="32"></label><label class="field">입력 너비<input id="pseudoWidth" type="number" value="640" min="32" step="32"></label><label id="pseudoBatchField" class="field">Batch<input id="pseudoBatch" type="number" value="8" min="1" max="128"></label></div>
     <label class="field">처리할 프레임 수 (0 = 전체)<input id="pseudoLimit" type="number" value="0" min="0"></label>
-    <label id="pseudoMappingField" class="field">클래스 매핑 JSON · 모델 이름/ID → GUI 이름/ID<textarea id="pseudoMapping" rows="3">{}</textarea><span class="help">예: {"person": "Person"}. 세그멘테이션은 세그멘테이션 클래스 이름/ID를 사용하세요. 이름이 같으면 자동 연결하며 매핑 없는 클래스는 제외됩니다.</span></label>
+    <label id="pseudoTextThresholdField" class="field">Grounding DINO Text threshold<input id="pseudoTextThreshold" type="number" value="0.25" min="0" max="1" step="0.05"></label>
+    <label id="pseudoMappingField" class="field"><span id="pseudoMappingLabel">클래스 매핑 JSON · 모델 이름/ID → GUI 이름/ID</span><textarea id="pseudoMapping" rows="3">{}</textarea><span class="help">YOLO 예: {"person": "Person"}. Grounded-SAM 예: {"road": 1}. 세그멘테이션은 세그멘테이션 클래스 이름/ID를 사용하세요. 이름이 같으면 자동 연결하며 매핑 없는 클래스는 제외됩니다.</span></label>
     <p class="help">세그멘테이션 모델은 마스크를, 검출 모델은 박스를 생성합니다. 다른 작업의 라벨은 초기값으로 남습니다. 기존 라벨과 입력 데이터는 덮어쓰지 않습니다. 모델 가중치는 별도로 넣어야 합니다.</p>
     <div class="row"><button id="pseudoStart" class="primary" type="button">생성 실행</button><button id="pseudoCancel" type="button">중단</button><button id="pseudoOpenResult" type="button">완료 결과 열기</button></div>
     <p id="pseudoStatus" role="status"></p><progress id="pseudoProgress" hidden></progress><pre id="pseudoLog"></pre>

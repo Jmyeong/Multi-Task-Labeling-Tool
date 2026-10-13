@@ -93,3 +93,5 @@ textarea { width: 100%; resize: vertical; }.full { width: 100%; margin-top: 8px;
 
 body{display:flex;flex-direction:column;height:100dvh}main{flex:1;height:auto}header{flex-shrink:0}
 #pseudoDialog .row>h2,#pseudoFileDialog .row>h2{flex:1;margin:0}#pseudoClose,#pseudoFileClose{flex:0 0 auto}
+
+#pseudoMappingLabel{float:none;display:block}

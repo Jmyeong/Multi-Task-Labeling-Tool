@@ -72,19 +72,37 @@ SAM starts lazily when requested, previews the mask without saving, and applies 
 
 ## Automatic labels
 
-Click **Pseudo labeling** in the GUI. Select segmentation, object detection or multi-task, choose a local `.pt` checkpoint, set the inference Python environment, device and a **new empty output folder**, then click **생성 실행**. Progress, logs, cancellation and **완료 결과 열기** are available in the dialog. Generation uses the current input folder, preserves input files and existing editor labels, and creates pending annotations for review. Closing the dialog does not stop the job. Job configuration/status/logs are saved under `outputs/pseudo_jobs/`.
+Click **Pseudo labeling** in the GUI. Select segmentation, object detection or multi-task, choose a local `.pt` checkpoint or Grounded-SAM bundle `.json`, set the inference Python environment, device and a **new empty output folder**, then click **생성 실행**. Progress, logs, cancellation and **완료 결과 열기** are available in the dialog. Generation uses the current input folder, preserves input files and existing editor labels, and creates pending annotations for review. Closing the dialog does not stop the job. Job configuration/status/logs are saved under `outputs/pseudo_jobs/`.
 
 Install the appropriate PyTorch/torchvision build and `python -m pip install -r requirements-pseudo.txt` in the inference environment. `PSEUDO_PYTHON` sets the GUI's default model interpreter; it can also be entered in the dialog. Manual editing still works without model packages.
 
 | Selection | Network / weights | Inputs and output |
 |---|---|---|
-| segmentation | `pseudo_labeling/model/segmentation/network.py`, `checkpoint/*.pt` | Ultralytics YOLO instance-segmentation model, RGB → semantic class-ID PNG |
-| object_detection | `pseudo_labeling/model/object_detection/network.py`, `checkpoint/*.pt` | Ultralytics YOLO detection model, RGB → YOLO boxes |
+| segmentation | `segmentation/network.py`, `grounded_sam.py`, `checkpoint/grounded_sam.json` (or YOLO `.pt`) | Grounding DINO + original SAM, English text + RGB → semantic class-ID PNG |
+| object_detection | `object_detection/network.py`, `checkpoint/yolo26n.pt` (or trained YOLO `.pt`) | Official COCO-pretrained YOLO26n, RGB → YOLO boxes |
 | multi_task | `pseudo_labeling/model/multi_task/network.py`, `yolo26.py`, `checkpoint.py`, `checkpoint/*.pt` | Existing compatible YOLO26 joint RGB/NIR model → boxes + binary road mask; requires detector template |
 
 Checkpoints are user supplied. External checkpoint paths are also accepted. The single-task loaders use the architecture embedded in the Ultralytics `.pt` checkpoint; modifying a loader alone cannot convert incompatible weights. DAv2-MTL and arbitrary raw state dictionaries are not supported by these loaders.
 
 **Class mapping:** single-task models map checkpoint class names to active GUI class names (case-insensitive), never by identical numeric IDs. Supply JSON such as `{"person": "Person"}` or `{"0": 1}` to override. Segmentation uses the segmentation palette; detection uses box classes. Unmapped classes are skipped and logged; zero matched classes is an error. Overlapping masks use the prediction with the highest confidence. Segmentation-only jobs leave boxes empty; detection-only jobs leave the mask at background 0. These are separate outputs, not a merge into existing annotations.
+
+### Official examples
+
+Both examples have a common Windows/Linux installer. Install a matching PyTorch/torchvision pair for your hardware, then:
+
+```bash
+python -m pip install -r requirements-grounded-sam.txt
+python -m scripts.download_example_models all
+# Individual downloads: yolo26 or grounded-sam instead of all
+```
+
+The installer places **official Ultralytics YOLO26n** weights in `object_detection/checkpoint/yolo26n.pt`. It downloads **IDEA-Research/grounding-dino-tiny** and **facebook/sam-vit-base** into `segmentation/checkpoint/grounding_dino/` and `segmentation/checkpoint/sam/`, and writes `segmentation/checkpoint/grounded_sam.json`. Downloaded revisions are recorded in the bundle. Weights and local bundles are excluded from Git; no model download occurs during inference. The GUI selects these examples by default when installed.
+
+YOLO26n uses COCO's 80 classes. `person` automatically maps to the default `Person` target; Golfcart/Tree are not COCO classes and are not automatically substituted with car/plant. Other classes require adding a GUI target or an explicit mapping.
+
+For Grounded-SAM, the mapping field becomes **English text prompts → active segmentation class**. The default `{"road": 1}` finds road and assigns its mask to GUI ID 1. Add a class in the GUI first to use prompts such as `{"road": 1, "water": 2}`. Grounding DINO runs each prompt separately, then SAM segments its boxes and chooses the mask with highest predicted IoU. Overlaps use the highest Grounding DINO detection confidence. Confidence controls box filtering; Text threshold controls phrase-token filtering. Grounding DINO/SAM use their official preprocessing and original RGB geometry, so the YOLO height/width fields are hidden. Grounded-SAM does not retrain either model or guarantee correct semantic labels; inspect generated masks before approval.
+
+Grounded-SAM uses Transformers' implementation of the [official Grounded-SAM workflow](https://github.com/IDEA-Research/Grounded-Segment-Anything), following the [Grounding DINO](https://huggingface.co/docs/transformers/model_doc/grounding-dino) and [SAM](https://huggingface.co/docs/transformers/model_doc/sam) APIs. It requires no GroundingDINO CUDA extension build on either OS. Sources and weight terms: [Ultralytics YOLO26](https://docs.ultralytics.com/models/yolo26/), [Grounding DINO Tiny](https://huggingface.co/IDEA-Research/grounding-dino-tiny), [SAM ViT-B](https://huggingface.co/facebook/sam-vit-base).
 
 The joint model retains its trained Golfcart/Person/Tree/Undef_obj and binary road mapping. It requires the default class names/active targets and matched NIR. Standard COCO weights and DAv2-MTL checkpoints are incompatible with the joint loader. Road predictions near the confidence threshold may be marked 255/ignore. The GUI also includes frames with source semantic/instance labels, but never changes their source labels.
 
