@@ -293,7 +293,7 @@ class LauncherTests(unittest.TestCase):
             checkout.mkdir()
             for name in ["run_gui.bat", "run.py"]:
                 shutil.copy2(PROJECT / name, checkout / name)
-            for name in ["core", "gui", "scripts", "sam"]:
+            for name in ["core", "gui", "scripts", "sam", "pseudo_labeling"]:
                 shutil.copytree(
                     PROJECT / name, checkout / name, ignore=shutil.ignore_patterns("__pycache__")
                 )
