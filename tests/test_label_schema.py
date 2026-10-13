@@ -23,7 +23,7 @@ from scripts.extract_dataset import DatasetExports
 class LabelSchemaTests(unittest.TestCase):
     def setUp(self):
         self.tmp = tempfile.TemporaryDirectory()
-        self.base = Path(self.tmp.name)
+        self.base = Path(self.tmp.name).resolve()
         self.source = self.base / "images"
         self.source.mkdir()
         Image.fromarray(np.full((20, 30, 3), 80, np.uint8)).save(self.source / "a.png")

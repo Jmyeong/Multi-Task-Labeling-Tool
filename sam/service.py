@@ -107,7 +107,12 @@ class SamService:
             if self.process is None or self.process.poll() is not None:
                 self.close()
                 env = os.environ.copy()
-                env.update(OMP_NUM_THREADS="4", TOKENIZERS_PARALLELISM="false")
+                env.update(
+                    OMP_NUM_THREADS="4",
+                    TOKENIZERS_PARALLELISM="false",
+                    PYTHONUTF8="1",
+                    PYTHONIOENCODING="utf-8",
+                )
                 self.process = subprocess.Popen(
                     [
                         self.python,

@@ -145,7 +145,7 @@ class PipeTests(unittest.TestCase):
 class SamProcessTests(unittest.TestCase):
     def setUp(self):
         self.tmp = tempfile.TemporaryDirectory()
-        self.root = Path(self.tmp.name)
+        self.root = Path(self.tmp.name).resolve()
         self.script = self.root / "한글 fake worker.py"
         self.script.write_text(
             """import base64,json,sys,time
@@ -191,7 +191,9 @@ for line in sys.stdin.buffer:
         )
 
     def test_persistent_unicode_worker_and_cleanup(self):
-        first = self.predict()
+        # Worker logs/protocol remain UTF-8 even if the parent locale is ASCII.
+        with patch.dict(os.environ, {"PYTHONUTF8": "0", "PYTHONIOENCODING": "ascii"}):
+            first = self.predict()
         process = self.service.process
         second = self.predict()
         self.assertEqual(base64.b64decode(first["mask"]), bytes([1]) * 48)

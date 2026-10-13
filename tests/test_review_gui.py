@@ -24,7 +24,7 @@ from gui.server import make_handler
 class ReviewTests(unittest.TestCase):
     def setUp(self):
         self.temp = tempfile.TemporaryDirectory()
-        self.root = Path(self.temp.name)
+        self.root = Path(self.temp.name).resolve()
         self.pseudo = self.root / "pseudo_labels"
         self.pseudo.mkdir()
         row = {

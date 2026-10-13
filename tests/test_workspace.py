@@ -23,7 +23,7 @@ from gui.server import Workspace, make_handler
 class WorkspaceTests(unittest.TestCase):
     def setUp(self):
         self.temp = tempfile.TemporaryDirectory()
-        self.base = Path(self.temp.name)
+        self.base = Path(self.temp.name).resolve()
         self.source = self.base / "input"
         self.source.mkdir()
         self.output = self.base / "labels"

@@ -116,7 +116,7 @@ class ExistingRoadTests(unittest.TestCase):
 
     def snapshot(self):
         return {
-            str(p.relative_to(self.root)): p.read_bytes()
+            p.relative_to(self.root).as_posix(): p.read_bytes()
             for p in self.root.rglob("*")
             if p.is_file()
             and not any(part.startswith("_") for part in p.relative_to(self.root).parts)
